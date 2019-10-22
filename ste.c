@@ -29,7 +29,7 @@ struct term {
 	} dim;
 
 	char statusbar[30];
-	int ln_s;
+	int pad;
 } t;
 
 /* Row structure, defines actual and
@@ -156,8 +156,8 @@ void termInit (void)
 	/* Populate the main data structure */
 	getmaxyx(stdscr, t.dim.y, t.dim.x);
 	t.dim.y -= 1;
-	t.ln_s = getLineNumberSize();
-	t.dim.x -= t.ln_s + 1;
+	t.pad = getLineNumberSize();
+	t.dim.x -= t.pad + 1;
 
 	/* Initialize the data staructure */
 	t.cur.x = t.cur.off_x = 0;
@@ -237,7 +237,7 @@ void drawLines (void)
 /* Move avoiding the space allocated for line numbers */
 void lnMove (int y, int x)
 {
-	x += t.ln_s;
+	x += t.pad;
 	move(y, x);
 }
 
@@ -251,12 +251,12 @@ void drawBar (char *s)
 	/* Print the message */
 	mvprintw(t.dim.y, 0, s);
 	/* Fill everything else with spaces */
-	for (int i = len; i <= t.dim.x + t.ln_s; i++)
+	for (int i = len; i <= t.dim.x + t.pad; i++)
 		mvaddch(t.dim.y, i, ' ');
 
 	char m[10];
 	sprintf(m, "Zoom:\t%c", whatsThat());
-	mvaddstr(t.dim.y, t.dim.x + t.ln_s - strlen(m), m);
+	mvaddstr(t.dim.y, t.dim.x + t.pad - strlen(m), m);
 
 	/* Return to normal contrast mode */
 	attroff(A_STANDOUT);
