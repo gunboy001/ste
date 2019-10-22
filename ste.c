@@ -82,6 +82,9 @@ static void rowAdd (char *s, int len);
 //inline void bufferFree (void);
 static int whatsThat (void);
 
+/* testing */
+void updateInfo (void);
+
 /* --------------------------------- main ------------------------------------ */
 int main (int argc, char *argv[])
 {
@@ -462,3 +465,12 @@ int whatsThat (void) {
 }
 
 /*--------------------------------- garbage ------------------------------------*/
+
+void updateInfo (void)
+{
+	getmaxyx(stdscr, t.dim.y, t.dim.x);
+	t.dim.y -= 1;
+	t.dim.x -= t.pad + 1;
+}
+
+/*--------------------------------- testing ------------------------------------*/
