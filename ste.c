@@ -4,7 +4,7 @@
 
 /* defines */
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
-#define TABSIZE 4 // Tab size as used in render
+#define TABSIZE 8 // Tab size as used in render
 
 /* main data structure containing:
  *	-cursor position
@@ -154,7 +154,11 @@ void termInit (void)
 
 	/* Start color mode */
 	start_color();
-	init_pair(1, COLOR_BLUE, COLOR_BLACK);
+	init_pair(2, COLOR_BLACK, COLOR_CYAN);
+	init_pair(1, COLOR_BLACK, COLOR_WHITE);
+
+	/* Set default color */
+	bkgd(COLOR_PAIR(1));
 
 	/* Populate the main data structure */
 	getmaxyx(stdscr, t.dim.y, t.dim.x);
@@ -187,6 +191,7 @@ void termExit (void)
 
 void termDie (char *s)
 {
+	erase();
 	refresh();
 	endwin();
 	perror(s);
@@ -223,15 +228,20 @@ void drawLines (void)
 		ln = i + t.cur.off_y;
 		
 		/* Draw the line number */
-		attron(COLOR_PAIR(1));
+		attron(COLOR_PAIR(2));
 		mvprintw(i, 0, "%d", ln + 1);
-		attroff(COLOR_PAIR(1));
+		attroff(COLOR_PAIR(2));
 		lnMove(i, 0);
+
+		if (ln == t.cur.y + t.cur.off_y) attron(COLOR_PAIR(2));
 		
 		/* Draw the line matcing render memory */
 		if (rows.rw[ln].r_size >= t.cur.off_x) {
 			addnstr(&rows.rw[ln].render[t.cur.off_x], t.dim.x + 1 - rows.rw[ln].delta);
 		}
+
+		attroff(COLOR_PAIR(2));
+		
 		lnMove(++line, 0);
 	}
 	lnMove(t.cur.y, t.cur.x);
@@ -258,7 +268,7 @@ void drawBar (char *s)
 		mvaddch(t.dim.y, i, ' ');
 
 	char m[10];
-	sprintf(m, "Zoom:\t%c", whatsThat());
+	sprintf(m, "Zoom: %c", whatsThat());
 	mvaddstr(t.dim.y, t.dim.x + t.pad - strlen(m), m);
 
 	/* Return to normal contrast mode */
@@ -340,8 +350,10 @@ void updateRender (row *rw)
 	int off = 0;
 	for (i = 0; i < rw->size; i++) {
 		if (rw->chars[i] == '\t') {
-			for (int j = 0; j < TABSIZE; j++)
-				rw->render[off++] = ' ';
+			for (int j = 0; j < TABSIZE; j++){
+				if (!j) rw->render[off++] = '|'; 
+				else rw->render[off++] = ' ';
+			}
 		} else {
 			rw->render[off++] = rw->chars[i];
 		}
@@ -456,6 +468,9 @@ int whatsThat (void) {
 			break;
 		case (' '):
 			return '~';
+			break;
+		case ('\0'):
+			return '.';
 			break;
 		default:
 			return c;
