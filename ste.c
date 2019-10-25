@@ -1,6 +1,7 @@
 #include <ncurses.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 /* defines */
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
@@ -65,6 +66,7 @@ static int curRealToRender (row *rw, int c_x);
 
 /* Row operations */
 static inline void rowInit (void);
+static void rowAddChar (row *rw, char c);
 
 /* Terminal operations */
 static void termInit (void);
@@ -121,6 +123,8 @@ int main (int argc, char *argv[])
 			case (KEY_DOWN):
 				cursorMove(c);
 				break;
+			default:
+				rowAddChar(&rows.rw[t.cur.y + t.cur.off_y], c);
 		}
 	}
 
@@ -158,7 +162,7 @@ void termInit (void)
 	init_pair(1, COLOR_BLACK, COLOR_WHITE);
 
 	/* Set default color */
-	bkgd(COLOR_PAIR(1));
+	//bkgd(COLOR_PAIR(1));
 
 	/* Populate the main data structure */
 	getmaxyx(stdscr, t.dim.y, t.dim.x);
@@ -233,14 +237,14 @@ void drawLines (void)
 		attroff(COLOR_PAIR(2));
 		lnMove(i, 0);
 
-		if (ln == t.cur.y + t.cur.off_y) attron(COLOR_PAIR(2));
+		//if (ln == t.cur.y + t.cur.off_y) attron(COLOR_PAIR(2));
 		
 		/* Draw the line matcing render memory */
 		if (rows.rw[ln].r_size >= t.cur.off_x) {
 			addnstr(&rows.rw[ln].render[t.cur.off_x], t.dim.x + 1 - rows.rw[ln].delta);
 		}
 
-		attroff(COLOR_PAIR(2));
+		//attroff(COLOR_PAIR(2));
 		
 		lnMove(++line, 0);
 	}
@@ -258,7 +262,7 @@ void lnMove (int y, int x)
 void drawBar (char *s)
 {
 	/* Set maximum contrast for bar */
-	attron(A_STANDOUT);
+	attron(COLOR_PAIR(2));
 	/* get the length of the statusbar text */
 	int len = strlen(s);
 	/* Print the message */
@@ -272,7 +276,7 @@ void drawBar (char *s)
 	mvaddstr(t.dim.y, t.dim.x + t.pad - strlen(m), m);
 
 	/* Return to normal contrast mode */
-	attroff(A_STANDOUT);
+	attroff(COLOR_PAIR(2));
 }
 
 /* convert the cursor matchoing the memory to the drawn one */
@@ -366,6 +370,37 @@ void rowInit (void)
 {
 	rows.rw = NULL;
 	rows.rownum = 0;
+}
+
+void rowAddChar (row *rw, char c) // WIP
+{
+	// Error checking
+	if (!c || iscntrl(c)) return;
+	
+	int cur = t.cur.x + t.cur.off_x, i = 0;
+	char *s = rw->chars;
+
+	// reallocate mem and inc size
+	rw->chars = malloc(rw->size + 2);
+	rw->size++;
+
+	// copy bf cursor
+	for (i = 0; i < cur; i++) {
+		rw->chars[i] = s[i];
+	}
+
+	// add at cursor
+	rw->chars[cur++] = (char)c;
+
+	//copy after cursor 
+	for (i = cur; i < rw->size + 1; i++) {
+			rw->chars[i] = s[i - 1];
+	}
+	
+	free(s);
+
+	updateRender(rw);
+	t.cur.x++;
 }
 
 /* ----------------------------- file operations --------------------------- */
