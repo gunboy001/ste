@@ -67,6 +67,7 @@ static int curRealToRender (row *rw, int c_x);
 /* Row operations */
 static inline void rowInit (void);
 static void rowAddChar (row *rw, char c);
+static void rowDeleteChar (row *rw, int m);
 
 /* Terminal operations */
 static void termInit (void);
@@ -122,6 +123,12 @@ int main (int argc, char *argv[])
 			case (KEY_UP):
 			case (KEY_DOWN):
 				cursorMove(c);
+				break;
+			case (KEY_BACKSPACE):
+				rowDeleteChar(&rows.rw[t.cur.y + t.cur.off_y], 0);
+				break;
+			case (KEY_DC):
+				rowDeleteChar(&rows.rw[t.cur.y + t.cur.off_y], 1);
 				break;
 			default:
 				rowAddChar(&rows.rw[t.cur.y + t.cur.off_y], c);
@@ -390,7 +397,7 @@ void rowAddChar (row *rw, char c) // WIP
 	}
 
 	// add at cursor
-	rw->chars[cur++] = (char)c;
+	rw->chars[cur++] = c;
 
 	//copy after cursor 
 	for (i = cur; i < rw->size + 1; i++) {
@@ -401,6 +408,37 @@ void rowAddChar (row *rw, char c) // WIP
 
 	updateRender(rw);
 	t.cur.x++;
+}
+
+void rowDeleteChar (row *rw, int m) // WIP
+{
+	int cur = t.cur.x + t.cur.off_x;
+	char *s = rw->chars;
+	//Do not delete NULL char
+	if(s[cur - 1] == '\0' || !cur) return;
+
+	rw->chars = malloc(rw->size);
+	rw->size--;
+
+	// Backspace
+	if (!m) {
+		for (int i = 0; i < cur - 1; i++)
+			rw->chars[i] = s[i];
+	
+		for (int i = cur; i < rw->size + 1; i++)
+			rw->chars[i - 1] = s[i];
+	// Delete			
+	} else {
+		for (int i = 0; i < cur; i++)
+			rw->chars[i] = s[i];
+	
+		for (int i = cur + 1; i < rw->size + 1; i++)
+			rw->chars[i - 1] = s[i];
+	}
+	
+	free(s);
+	updateRender(rw);
+	t.cur.x--;
 }
 
 /* ----------------------------- file operations --------------------------- */
