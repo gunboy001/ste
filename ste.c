@@ -68,6 +68,7 @@ static int curRealToRender (row *rw, int c_x);
 static inline void rowInit (void);
 static void rowAddChar (row *rw, char c);
 static void rowDeleteChar (row *rw, int m);
+static void rowCpy (row *to, row *from);
 
 /* Terminal operations */
 static void termInit (void);
@@ -79,14 +80,16 @@ static void fileOpen (char *filename);
 void fileSave (char *filename);
 
 /* buffer operations */
-static void rowAdd (char *s, int len);
+static void rowAddLast (char *s, int len);
 
 /* garbage */
-//inline void bufferFree (void);
-static int whatsThat (void);
 
 /* testing */
-void updateInfo (void);
+static void updateInfo (void);
+static void rowAddRow (int pos);
+static int whatsThat (void);
+static void rowFree (row *rw);
+
 
 /* --------------------------------- main ------------------------------------ */
 int main (int argc, char *argv[])
@@ -130,6 +133,14 @@ int main (int argc, char *argv[])
 			case (KEY_DC):
 				rowDeleteChar(&rows.rw[t.cur.y + t.cur.off_y], 1);
 				break;
+			case (KEY_ENTER):
+			case (10):
+			case ('\r'):
+				rowAddRow(t.cur.y + t.cur.off_y);
+				break;
+			case (KEY_END):
+				t.cur.y = rows.rownum;
+				break;
 			default:
 				if (c == KEY_STAB) c = '\t';
 				rowAddChar(&rows.rw[t.cur.y + t.cur.off_y], c);
@@ -167,16 +178,13 @@ void termInit (void)
 	/* Start color mode */
 	start_color();
 	init_pair(2, COLOR_BLACK, COLOR_CYAN);
-	init_pair(1, COLOR_BLACK, COLOR_WHITE);
+	init_pair(1, COLOR_RED, COLOR_BLACK);
 
 	/* Set default color */
 	//bkgd(COLOR_PAIR(1));
 
 	/* Populate the main data structure */
-	getmaxyx(stdscr, t.dim.y, t.dim.x);
-	t.dim.y -= 1;
-	t.pad = getLineNumberSize();
-	t.dim.x -= t.pad + 1;
+	updateInfo();
 
 	/* Initialize the data staructure */
 	t.cur.x = t.cur.off_x = 0;
@@ -194,7 +202,6 @@ int getLineNumberSize (void)
 
 void termExit (void)
 {
-//	bufferFree();
 	erase();
 	refresh();
 	endwin();
@@ -240,9 +247,9 @@ void drawLines (void)
 		ln = i + t.cur.off_y;
 		
 		/* Draw the line number */
-		attron(COLOR_PAIR(2));
+		attron(COLOR_PAIR(1));
 		mvprintw(i, 0, "%d", ln + 1);
-		attroff(COLOR_PAIR(2));
+		attroff(COLOR_PAIR(1));
 		lnMove(i, 0);
 
 		//if (ln == t.cur.y + t.cur.off_y) attron(COLOR_PAIR(2));
@@ -279,8 +286,8 @@ void drawBar (char *s)
 	for (int i = len; i <= t.dim.x + t.pad; i++)
 		mvaddch(t.dim.y, i, ' ');
 
-	char m[10];
-	sprintf(m, "%d Zoom: %c", t.cur.x + t.cur.off_x, whatsThat());
+	char m[40];
+	sprintf(m, "x: %d y: %d Zoom: %c", t.cur.x + t.cur.off_x, t.cur.y + t.cur.off_y, whatsThat());
 	mvaddstr(t.dim.y, t.dim.x + t.pad - strlen(m), m);
 
 	/* Return to normal contrast mode */
@@ -317,7 +324,7 @@ void fileOpen (char *filename)
 	while ((linelen = getline(&line, &linecap, fp)) != -1) {
 		while (linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
 			linelen--;
-		rowAdd(line, linelen);
+		rowAddLast(line, linelen);
 	}
 	/* free the line buffer */
 	free(line);
@@ -326,7 +333,7 @@ void fileOpen (char *filename)
 }
 
 /* Add a row to the file buffer */
-void rowAdd (char *s, int len)
+void rowAddLast (char *s, int len)
 {
 	/* Extend the block of memory containing the lines */
 	rows.rw = realloc(rows.rw, sizeof(row) * (rows.rownum + 1));
@@ -526,17 +533,6 @@ void updateScroll (void)
 
 /*---------------------------------- scroll ------------------------------------*/
 
-/*
-void bufferFree (void)
-{
-	for (int i = 0; i < rows.rownum; i++) {
-		free(&rows.rw[i].chars);
-		free(&rows.rw[i].render);
-	}
-	free(rows.rw);
-}
-*/
-
 /* See whats under the cursor (memory) */
 int whatsThat (void) {
 	int ln = t.cur.y + t.cur.off_y;
@@ -558,12 +554,107 @@ int whatsThat (void) {
 	return 0;
 }
 
+/* void rowAddRow (void) //VERY WIP
+{
+	int cur_x = t.cur.x + t.cur.off_x;
+	int cur_y = t.cur.y + t.cur.off_y;
+	char *s = NULL;
+
+	// Last line case
+	if (cur_y == rows.rownum - 1) {
+		if (rows.rw[cur_y].chars[cur_x] != '\0') {
+			//copy the previous string
+			s = malloc(rows.rw[cur_y].size + 1);
+			memcpy (s, &rows.rw[cur_y].chars, rows.rw[cur_y].size + 1);
+		}
+		cur_y++;
+		rows.rownum++;
+		rows.rw = realloc(rows.rw, sizeof(row) * rows.rownum);
+		if (s == NULL) {
+			rows.rw[cur_y].chars = malloc(1);
+			rows.rw[cur_y].chars[0] = '\0';
+		} else {
+			rows.rw[cur_y].chars = malloc(strlen(s) + 1);
+			memcpy(rows.rw[cur_y].chars, s, strlen(s));
+			rows.rw[cur_y].chars[strlen(s) + 1] = '\0';
+		}
+		free(s);
+		updateRender(&rows.rw[cur_y]);
+		t.cur.y++;
+	}
+} */
+
+void rowAddRow (int pos) // WIP; TO DOCUMENT
+{
+	int cur_x = t.cur.x + t.cur.off_x;
+	char *s = NULL;
+	// Move away other lines
+	//copy old last line to new space
+	rowAddLast(rows.rw[rows.rownum].chars, rows.rw[rows.rownum].size);
+
+	for (int last = rows.rownum - 1; last > pos; last--) {
+		rowCpy(&rows.rw[last], &rows.rw[last - 1]);
+	}
+
+	//if (!cur_x) cur_x = rows.rw[pos].size;
+	//if (rows.rw[pos].chars[cur_x] == '\0') {
+	//	cur_x = 0;
+	//	t.cur.x = 0;
+	//}
+
+	//copy previous row
+	int l = rows.rw[pos].size - cur_x;
+	s = malloc(l + 1);
+	memcpy(s, &rows.rw[pos].chars[cur_x], l);
+	s[l] = '\0';
+	// Delete prev row until cursor
+	char *p = malloc(cur_x + 1);
+	memcpy(p, rows.rw[pos].chars, cur_x);
+	p[cur_x] = '\0';
+	rowFree(&rows.rw[pos]);
+	rows.rw[pos].chars = malloc(cur_x + 1);
+	memcpy(rows.rw[pos].chars, p, cur_x + 1);
+	free(p);
+	rows.rw[pos].size = cur_x;
+	updateRender(&rows.rw[pos]);
+
+	if (pos != rows.rownum - 1) {
+		rowFree(&rows.rw[pos + 1]);
+		rows.rw[pos + 1].chars = malloc(strlen(s) + 1);
+		memcpy(rows.rw[pos + 1].chars, s, strlen(s) + 1);
+		rows.rw[pos + 1].size = strlen(s);
+		updateRender(&rows.rw[pos + 1]);
+	} else rowAddLast(s, l);
+
+		free(s);
+		t.cur.y++;
+		t.cur.x = 0;
+}
+
+void rowFree (row *rw) // WIP
+{
+	free(rw->render);
+	free(rw->chars);
+	rw->size = 0;
+	rw->r_size = 0;
+}
+
+void rowCpy (row *to, row *from) // WIP
+{ 
+	rowFree(to);
+	to->chars = malloc(strlen(from->chars) + 1);
+	to->size = from->size;
+	memcpy(to->chars, from->chars, to->size);
+	updateRender(to);
+}
+
 /*--------------------------------- garbage ------------------------------------*/
 
 void updateInfo (void)
 {
 	getmaxyx(stdscr, t.dim.y, t.dim.x);
 	t.dim.y -= 1;
+	t.pad = getLineNumberSize();
 	t.dim.x -= t.pad + 1;
 }
 
