@@ -5,7 +5,7 @@
 
 /* defines */
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
-#define TABSIZE 8 // Tab size as used in render
+#define TABSIZE 4 // Tab size as used in render
 
 /* main data structure containing:
  *	-cursor position
@@ -517,7 +517,7 @@ void updateScroll (void)
 
 	/* Set x offeset */
 	if (t.cur.x >= t.dim.x) {
-		if (t.cur.x == t.dim.x) t.cur.off_x++;
+		if (t.cur.x == t.dim.x - 1) t.cur.off_x++;
 		else t.cur.off_x += t.cur.x - t.dim.x;
 		
 		t.cur.x = t.dim.x;
@@ -553,36 +553,6 @@ int whatsThat (void) {
 	}
 	return 0;
 }
-
-/* void rowAddRow (void) //VERY WIP
-{
-	int cur_x = t.cur.x + t.cur.off_x;
-	int cur_y = t.cur.y + t.cur.off_y;
-	char *s = NULL;
-
-	// Last line case
-	if (cur_y == rows.rownum - 1) {
-		if (rows.rw[cur_y].chars[cur_x] != '\0') {
-			//copy the previous string
-			s = malloc(rows.rw[cur_y].size + 1);
-			memcpy (s, &rows.rw[cur_y].chars, rows.rw[cur_y].size + 1);
-		}
-		cur_y++;
-		rows.rownum++;
-		rows.rw = realloc(rows.rw, sizeof(row) * rows.rownum);
-		if (s == NULL) {
-			rows.rw[cur_y].chars = malloc(1);
-			rows.rw[cur_y].chars[0] = '\0';
-		} else {
-			rows.rw[cur_y].chars = malloc(strlen(s) + 1);
-			memcpy(rows.rw[cur_y].chars, s, strlen(s));
-			rows.rw[cur_y].chars[strlen(s) + 1] = '\0';
-		}
-		free(s);
-		updateRender(&rows.rw[cur_y]);
-		t.cur.y++;
-	}
-} */
 
 void rowAddRow (int pos) // WIP; TO DOCUMENT
 {
@@ -626,9 +596,10 @@ void rowAddRow (int pos) // WIP; TO DOCUMENT
 		updateRender(&rows.rw[pos + 1]);
 	} else rowAddLast(s, l);
 
-		free(s);
-		t.cur.y++;
-		t.cur.x = 0;
+	free(s);
+	t.cur.y++;
+	t.cur.x = 0;
+	t.cur.off_x = 0;
 }
 
 void rowFree (row *rw) // WIP
