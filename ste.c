@@ -62,7 +62,7 @@ static void drawLines (void);
 static void updateRender (row *rw);
 static void updateScroll (void);
 static void cursorMove(int a);
-static int getLineNumberSize (void);
+static int decimalSize (int n);
 static void lnMove (int y, int x);
 static int curRealToRender (row *rw, int c_x);
 
@@ -112,6 +112,9 @@ int main (int argc, char *argv[])
 	/* Set the statusbar left (static) message */
 	sprintf(t.statusbar, "%s : %s %d lines %dx%d", argv[0], argv[1], rows.rownum, t.dim.y, t.dim.y);
 
+	/* remember the initial row number */
+	int irow = decimalSize(rows.rownum);
+
 	/* Main event loop */
 	int c;
 	while (1) {
@@ -144,10 +147,15 @@ int main (int argc, char *argv[])
 				t.cur.y = rows.rownum;
 				t.cur.off_y = 0;
 				break;
+			case (KEY_HOME):
+				t.cur.y = 0;
+				t.cur.off_y = 0;
+				break;
 			default:
 				if (c == KEY_STAB) c = '\t';
 				rowAddChar(&rows.rw[t.cur.yy], c);
 		}
+		if (decimalSize(rows.rownum) - irow) updateInfo();
 	}
 
 	/* If by chance i find myself here be sure
@@ -196,9 +204,9 @@ void termInit (void)
 
 /* Calculate the correct spacing for the line numbers
  * based on the size of the file */
-int getLineNumberSize (void)
+int decimalSize (int n)
 {
-	int n = rows.rownum, l = 0;
+	static int l;
 	for (l = 0; n > 0; l++) n /= 10;
 	return l + 1;
 }
@@ -626,7 +634,7 @@ void updateInfo (void)
 {
 	getmaxyx(stdscr, t.dim.y, t.dim.x);
 	t.dim.y -= 1;
-	t.pad = getLineNumberSize();
+	t.pad = decimalSize(rows.rownum);
 	t.dim.x -= t.pad + 1;
 }
 
