@@ -9,9 +9,9 @@
 
 /* main data structure containing:
  *	-cursor position
- *		-real (matching memory)
- *		-offset (memory and screen offset)
- *		-render (drawn on the screen)
+ *	+real (matching memory)
+ *	+offset (memory and screen offset)
+ *	+render (drawn on the screen)
  *	-window size
  *	-statusbar message */
 struct term {
@@ -142,6 +142,7 @@ int main (int argc, char *argv[])
 				break;
 			case (KEY_END):
 				t.cur.y = rows.rownum;
+				t.cur.off_y = 0;
 				break;
 			default:
 				if (c == KEY_STAB) c = '\t';
