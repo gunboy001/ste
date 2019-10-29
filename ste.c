@@ -22,6 +22,8 @@ struct term {
 		int off_y;
 		int r_x;
 		int r_y;
+		int xx;
+		int yy;
 	} cur;
 
 	struct {
@@ -128,22 +130,22 @@ int main (int argc, char *argv[])
 				cursorMove(c);
 				break;
 			case (KEY_BACKSPACE):
-				rowDeleteChar(&rows.rw[t.cur.y + t.cur.off_y], 0);
+				rowDeleteChar(&rows.rw[t.cur.yy], 0);
 				break;
 			case (KEY_DC):
-				rowDeleteChar(&rows.rw[t.cur.y + t.cur.off_y], 1);
+				rowDeleteChar(&rows.rw[t.cur.yy], 1);
 				break;
 			case (KEY_ENTER):
 			case (10):
 			case ('\r'):
-				rowAddRow(t.cur.y + t.cur.off_y);
+				rowAddRow(t.cur.yy);
 				break;
 			case (KEY_END):
 				t.cur.y = rows.rownum;
 				break;
 			default:
 				if (c == KEY_STAB) c = '\t';
-				rowAddChar(&rows.rw[t.cur.y + t.cur.off_y], c);
+				rowAddChar(&rows.rw[t.cur.yy], c);
 		}
 	}
 
@@ -287,7 +289,7 @@ void drawBar (char *s)
 		mvaddch(t.dim.y, i, ' ');
 
 	char m[40];
-	sprintf(m, "x: %d y: %d Zoom: %c", t.cur.x + t.cur.off_x, t.cur.y + t.cur.off_y, whatsThat());
+	sprintf(m, "x: %d y: %d Zoom: %c", t.cur.xx, t.cur.yy, whatsThat());
 	mvaddstr(t.dim.y, t.dim.x + t.pad - strlen(m), m);
 
 	/* Return to normal contrast mode */
@@ -392,7 +394,7 @@ void rowAddChar (row *rw, char c) // WIP
 	// Error checking (allow tab)
 	if (!c || (iscntrl(c) && c != '\t')) return;
 	
-	int cur = t.cur.x + t.cur.off_x, i = 0;
+	int i = 0;
 	char *s = rw->chars;
 
 	// reallocate mem and inc size
@@ -400,15 +402,15 @@ void rowAddChar (row *rw, char c) // WIP
 	rw->size++;
 
 	// copy bf cursor
-	for (i = 0; i < cur; i++) {
+	for (i = 0; i < t.cur.xx; i++) {
 		rw->chars[i] = s[i];
 	}
 
 	// add at cursor
-	rw->chars[cur++] = c;
+	rw->chars[t.cur.xx++] = c;
 
 	//copy after cursor 
-	for (i = cur; i < rw->size + 1; i++) {
+	for (i = t.cur.xx; i < rw->size + 1; i++) {
 			rw->chars[i] = s[i - 1];
 	}
 	
@@ -420,33 +422,32 @@ void rowAddChar (row *rw, char c) // WIP
 
 void rowDeleteChar (row *rw, int m) // WIP
 {
-	int cur = t.cur.x + t.cur.off_x;
 	char *s = rw->chars;
 	//Do not delete NULL char
-	if (s[cur - 1] == '\0' && cur) return;
-	if (!cur && !m) return;
-	if (s[cur] == '\0' && m) return;
+	if (s[t.cur.xx - 1] == '\0' && t.cur.xx) return;
+	if (!t.cur.xx && !m) return;
+	if (s[t.cur.xx] == '\0' && m) return;
 
 	rw->chars = malloc(rw->size);
 	rw->size--;
 
 	// Backspace
 	if (!m) {
-		for (int i = 0; i < cur - 1; i++)
+		for (int i = 0; i < t.cur.xx - 1; i++)
 			rw->chars[i] = s[i];
 	
-		for (int i = cur; i < rw->size + 1; i++)
+		for (int i = t.cur.xx; i < rw->size + 1; i++)
 			rw->chars[i - 1] = s[i];
 
 		t.cur.x--;
 	// Delete			
 	} else {
-		if(cur) {
-			for (int i = 0; i < cur; i++)
+		if(t.cur.xx) {
+			for (int i = 0; i < t.cur.xx; i++)
 				rw->chars[i] = s[i];
 		}
 	
-		for (int i = cur; i < rw->size + 1; i++)
+		for (int i = t.cur.xx; i < rw->size + 1; i++)
 			rw->chars[i] = s[i + 1];
 	}
 	
@@ -464,40 +465,46 @@ void cursorMove (int a)
 			if (t.cur.x <= 0 && !t.cur.off_x) {
 				if (t.cur.y) {
 					t.cur.y--;
-					t.cur.x = rows.rw[t.cur.y + t.cur.off_y].size;
+					t.cur.yy--;
+					t.cur.x = rows.rw[t.cur.yy].size;
 				}
 			} else t.cur.x--;
 			break;
 			
 		case (KEY_RIGHT):
-			if (t.cur.x + t.cur.off_x >= rows.rw[t.cur.y + t.cur.off_y].size) {
-				if (t.cur.y + t.cur.off_y < rows.rownum - 1) {
+			if (t.cur.xx >= rows.rw[t.cur.yy].size) {
+				if (t.cur.yy < rows.rownum - 1) {
 					t.cur.y++;
+					t.cur.yy++;
 					if (t.cur.off_x) t.cur.off_x = 0;
-					t.cur.x = rows.rw[t.cur.y + t.cur.off_y].size;
+					t.cur.x = rows.rw[t.cur.yy].size;
 				}
 			} else t.cur.x++;
 			break;
 			
 		case (KEY_UP):
-			if (t.cur.y + t.cur.off_y > 0) {
-				if (t.cur.y) t.cur.y--;
-				if (t.cur.x + t.cur.off_x > rows.rw[t.cur.y + t.cur.off_y].size) {
+			if (t.cur.yy > 0) {
+				if (t.cur.y) {
+					t.cur.y--;
+					t.cur.yy--;
+				if (t.cur.xx > rows.rw[t.cur.yy].size) {
 					if (t.cur.off_x) t.cur.off_x = 0;
-					t.cur.x = rows.rw[t.cur.y + t.cur.off_y].size;
+					t.cur.x = rows.rw[t.cur.yy].size;
 				}
 			}
 			break;
 
 		case (KEY_DOWN):
-			if (t.cur.y + t.cur.off_y < rows.rownum - 1) {
+			if (t.cur.yy < rows.rownum - 1) {
 				t.cur.y++;
-				if (t.cur.x + t.cur.off_x > rows.rw[t.cur.y + t.cur.off_y].size) {
+				t.cur.yy++;
+				if (t.cur.xx > rows.rw[t.cur.yy].size) {
 					if (t.cur.off_x) t.cur.off_x = 0;
-					t.cur.x = rows.rw[t.cur.y + t.cur.off_y].size;
+					t.cur.x = rows.rw[t.cur.yy].size;
 				}
 			}
 			break;
+		}
 	}
 }
 
@@ -527,16 +534,16 @@ void updateScroll (void)
 		t.cur.x = 0;
 	}
 	/* convert the cursor from real to render */
-	int ln = t.cur.y + t.cur.off_y;
-	t.cur.r_x = curRealToRender(&rows.rw[ln], t.cur.x);
+	t.cur.yy = t.cur.y + t.cur.off_y;
+	t.cur.xx = t.cur.x + t.cur.off_x;
+	t.cur.r_x = curRealToRender(&rows.rw[t.cur.yy], t.cur.x);
 }
 
 /*---------------------------------- scroll ------------------------------------*/
 
 /* See whats under the cursor (memory) */
 int whatsThat (void) {
-	int ln = t.cur.y + t.cur.off_y;
-	int c = rows.rw[ln].chars[t.cur.x + t.cur.off_x];
+	int c = rows.rw[t.cur.yy].chars[t.cur.xx];
 	switch (c) {
 		case ('\t'):
 			return '^';
@@ -556,7 +563,6 @@ int whatsThat (void) {
 
 void rowAddRow (int pos) // WIP; TO DOCUMENT
 {
-	int cur_x = t.cur.x + t.cur.off_x;
 	char *s = NULL;
 	// Move away other lines
 	//copy old last line to new space
@@ -566,26 +572,20 @@ void rowAddRow (int pos) // WIP; TO DOCUMENT
 		rowCpy(&rows.rw[last], &rows.rw[last - 1]);
 	}
 
-	//if (!cur_x) cur_x = rows.rw[pos].size;
-	//if (rows.rw[pos].chars[cur_x] == '\0') {
-	//	cur_x = 0;
-	//	t.cur.x = 0;
-	//}
-
 	//copy previous row
-	int l = rows.rw[pos].size - cur_x;
+	int l = rows.rw[pos].size - t.cur.xx;
 	s = malloc(l + 1);
-	memcpy(s, &rows.rw[pos].chars[cur_x], l);
+	memcpy(s, &rows.rw[pos].chars[t.cur.xx], l);
 	s[l] = '\0';
 	// Delete prev row until cursor
-	char *p = malloc(cur_x + 1);
-	memcpy(p, rows.rw[pos].chars, cur_x);
-	p[cur_x] = '\0';
+	char *p = malloc(t.cur.xx + 1);
+	memcpy(p, rows.rw[pos].chars, t.cur.xx);
+	p[t.cur.xx] = '\0';
 	rowFree(&rows.rw[pos]);
-	rows.rw[pos].chars = malloc(cur_x + 1);
-	memcpy(rows.rw[pos].chars, p, cur_x + 1);
+	rows.rw[pos].chars = malloc(t.cur.xx + 1);
+	memcpy(rows.rw[pos].chars, p, t.cur.xx + 1);
 	free(p);
-	rows.rw[pos].size = cur_x;
+	rows.rw[pos].size = t.cur.xx;
 	updateRender(&rows.rw[pos]);
 
 	if (pos != rows.rownum - 1) {
