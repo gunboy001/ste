@@ -131,6 +131,7 @@ int main (int argc, char *argv[])
 				rowDeleteChar(&rows.rw[t.cur.y + t.cur.off_y], 1);
 				break;
 			default:
+				if (c == KEY_STAB) c = '\t';
 				rowAddChar(&rows.rw[t.cur.y + t.cur.off_y], c);
 		}
 	}
@@ -279,7 +280,7 @@ void drawBar (char *s)
 		mvaddch(t.dim.y, i, ' ');
 
 	char m[10];
-	sprintf(m, "Zoom: %c", whatsThat());
+	sprintf(m, "%d Zoom: %c", t.cur.x + t.cur.off_x, whatsThat());
 	mvaddstr(t.dim.y, t.dim.x + t.pad - strlen(m), m);
 
 	/* Return to normal contrast mode */
@@ -381,8 +382,8 @@ void rowInit (void)
 
 void rowAddChar (row *rw, char c) // WIP
 {
-	// Error checking
-	if (!c || iscntrl(c)) return;
+	// Error checking (allow tab)
+	if (!c || (iscntrl(c) && c != '\t')) return;
 	
 	int cur = t.cur.x + t.cur.off_x, i = 0;
 	char *s = rw->chars;
@@ -415,7 +416,9 @@ void rowDeleteChar (row *rw, int m) // WIP
 	int cur = t.cur.x + t.cur.off_x;
 	char *s = rw->chars;
 	//Do not delete NULL char
-	if(s[cur - 1] == '\0' || !cur) return;
+	if (s[cur - 1] == '\0' && cur) return;
+	if (!cur && !m) return;
+	if (s[cur] == '\0' && m) return;
 
 	rw->chars = malloc(rw->size);
 	rw->size--;
@@ -427,18 +430,21 @@ void rowDeleteChar (row *rw, int m) // WIP
 	
 		for (int i = cur; i < rw->size + 1; i++)
 			rw->chars[i - 1] = s[i];
+
+		t.cur.x--;
 	// Delete			
 	} else {
-		for (int i = 0; i < cur; i++)
-			rw->chars[i] = s[i];
+		if(cur) {
+			for (int i = 0; i < cur; i++)
+				rw->chars[i] = s[i];
+		}
 	
-		for (int i = cur + 1; i < rw->size + 1; i++)
-			rw->chars[i - 1] = s[i];
+		for (int i = cur; i < rw->size + 1; i++)
+			rw->chars[i] = s[i + 1];
 	}
 	
 	free(s);
 	updateRender(rw);
-	t.cur.x--;
 }
 
 /* ----------------------------- file operations --------------------------- */
