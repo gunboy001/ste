@@ -1,1 +1,1 @@
-{"version":1,"ops":[{"author":{"id":"77a8222fdd04cd934283ef7ebd456006fdbe7679"},"files":null,"message":"https://wiki.libsdl.org/SDL_MouseWheelEvent\npossibly change event handling in a way that \nthe editor can be configured to enable/disable\nmouse support therefore SDL event handling","timestamp":1572446141,"title":"add mouse support using the SDL library:","type":1}]}
+{"version":1,"ops":[{"added":["feature"],"author":{"id":"77a8222fdd04cd934283ef7ebd456006fdbe7679"},"removed":null,"timestamp":1572446222,"type":5}]}
