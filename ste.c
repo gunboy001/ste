@@ -51,7 +51,7 @@ typedef struct row {
  * defines rows and teh number of rows */
 struct {
 	row *rw;
-	int rownum;
+	long rownum;
 } rows;
 
 /* Prototypes */
@@ -63,7 +63,7 @@ static void updateRender (row *rw);
 static void updateScroll (void);
 static void cursorMove(int a);
 static int decimalSize (int n);
-static void lnMove (int y, int x);
+static inline void lnMove (int y, int x);
 static int curRealToRender (row *rw, int c_x);
 
 /* Row operations */
@@ -110,7 +110,7 @@ int main (int argc, char *argv[])
 	termInit();
 
 	/* Set the statusbar left (static) message */
-	sprintf(t.statusbar, "%s : %s %d lines %dx%d", argv[0], argv[1], rows.rownum, t.dim.y, t.dim.y);
+	sprintf(t.statusbar, "%s : %s %ld lines %dx%d", argv[0], argv[1], rows.rownum, t.dim.y, t.dim.y);
 
 	/* remember the initial row number */
 	int irow = decimalSize(rows.rownum);
@@ -249,28 +249,24 @@ void drawScreen ()
 /* Draw all the appropriate lines (following cursor) to the screen */
 void drawLines (void)
 {
-	int line = 0, ln;
+	static unsigned int line = 0, ln = 0;
+	static int i = 0;
 	/* move to the beginning of the screen */
-	lnMove(0, 0);
+	//lnMove(0, 0);
 
-	for (int i = 0; i < t.dim.y; i++) {
+	for (i = 0; i < t.dim.y; i++) {
 		if (i >= rows.rownum) break;
 		ln = i + t.cur.off_y;
 		
 		/* Draw the line number */
 		attron(COLOR_PAIR(1));
-		mvprintw(i, 0, "%d", ln + 1);
+		move(i, 0);
+		printw("%d", ln + 1);
 		attroff(COLOR_PAIR(1));
 		lnMove(i, 0);
 
-		//if (ln == t.cur.y + t.cur.off_y) attron(COLOR_PAIR(2));
-		
 		/* Draw the line matcing render memory */
-		if (rows.rw[ln].r_size >= t.cur.off_x) {
-			addnstr(&rows.rw[ln].render[t.cur.off_x], t.dim.x + 1 - rows.rw[ln].delta);
-		}
-
-		//attroff(COLOR_PAIR(2));
+		addnstr(&rows.rw[ln].render[t.cur.off_x], t.dim.x + 1 - rows.rw[ln].delta);
 		
 		lnMove(++line, 0);
 	}
@@ -280,8 +276,7 @@ void drawLines (void)
 /* Move avoiding the space allocated for line numbers */
 void lnMove (int y, int x)
 {
-	x += t.pad;
-	move(y, x);
+	move(y, x + t.pad);
 }
 
 /* Draw the status bar at the bottom of the screen */
@@ -297,7 +292,7 @@ void drawBar (char *s)
 	for (int i = len; i <= t.dim.x + t.pad; i++)
 		mvaddch(t.dim.y, i, ' ');
 
-	char m[40];
+	static char m[40];
 	sprintf(m, "x: %d y: %d Zoom: %c", t.cur.xx, t.cur.yy, whatsThat());
 	mvaddstr(t.dim.y, t.dim.x + t.pad - strlen(m), m);
 
@@ -308,8 +303,8 @@ void drawBar (char *s)
 /* convert the cursor matchoing the memory to the drawn one */
 int curRealToRender (row *rw, int c_x)
 {
-	int r_x = 0;
-	for (int i = 0; i < c_x; i++) {
+	static int r_x = 0, i = 0;
+	for (i = 0, r_x = 0; i < c_x; i++) {
 		if (rw->chars[i] == '\t') r_x += (TABSIZE - 1) - (r_x % TABSIZE);
 		r_x++;
 	}
@@ -347,11 +342,16 @@ void fileOpen (char *filename)
 void rowAddLast (char *s, int len)
 {
 	/* Extend the block of memory containing the lines */
-	rows.rw = realloc(rows.rw, sizeof(row) * (rows.rownum + 1));
+	// reallocarray fails safely
+	row *newr = NULL;
+	newr = (row*) reallocarray(rows.rw, (rows.rownum + 1), sizeof(*newr));
+	if (newr == NULL) termDie("realloc rowAddLast");
+	else rows.rw = newr;
+	//rows.rw = (row*) realloc(rows.rw, sizeof(row) * (rows.rownum + 1));
 
 	/* Allocate memory for the line and copy it
 	 * at the current row number */
-	rows.rw[rows.rownum].chars = malloc(len  + 1);
+	rows.rw[rows.rownum].chars = (char*) malloc(len  + 1);
 	memcpy(rows.rw[rows.rownum].chars, s, len);
 	rows.rw[rows.rownum].chars[len] = '\0';
 	rows.rw[rows.rownum].size = len;
@@ -363,7 +363,7 @@ void updateRender (row *rw)
 {
 	/* count the special characters (only tabs for now) */
 	int tabs = 0, i;
-	for (i = 0; i < rw->size; i++) {
+	for (i = 0; i <= rw->size; i++) {
 		if (rw->chars[i] == '\t') tabs++;
 	}
 	rw->render = NULL;
@@ -377,10 +377,11 @@ void updateRender (row *rw)
 
 	/* put all the characters (substituing all special chars)
 	 * into the render buffer */
-	int off = 0;
-	for (i = 0; i < rw->size; i++) {
+	static int off, j = 0;
+	off = 0;
+	for (i = 0; i <= rw->size; i++) {
 		if (rw->chars[i] == '\t') {
-			for (int j = 0; j < TABSIZE; j++){
+			for (j = 0; j < TABSIZE; j++){
 				if (!j) rw->render[off++] = '|'; 
 				else rw->render[off++] = ' ';
 			}
@@ -388,6 +389,7 @@ void updateRender (row *rw)
 			rw->render[off++] = rw->chars[i];
 		}
 	}
+	off -= 1;
 	rw->render[off] = '\0';
 	rw->r_size = off;
 }
@@ -407,7 +409,7 @@ void rowAddChar (row *rw, char c) // WIP
 	char *s = rw->chars;
 
 	// reallocate mem and inc size
-	rw->chars = malloc(rw->size + 2);
+	rw->chars = (char*) malloc(rw->size + 2);
 	rw->size++;
 
 	// copy bf cursor
@@ -623,6 +625,7 @@ void rowCpy (row *to, row *from) // WIP
 { 
 	rowFree(to);
 	to->chars = malloc(strlen(from->chars) + 1);
+	if (to->chars == NULL) termDie("malloc in rowCpy");
 	to->size = from->size;
 	memcpy(to->chars, from->chars, to->size);
 	updateRender(to);
