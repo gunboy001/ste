@@ -1,7 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -pedantic -Werror
-#OFLAGS=-O3
-OFLAGS=-g
+OFLAGS=-O3
 LFLAGS=-lncursesw -ltcmalloc
 
 ste: ste.c
