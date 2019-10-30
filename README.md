@@ -1,4 +1,4 @@
-# ste simple terminal editor
+#ste simple terminal editor
 ste is a simple terminal editor partly inspired by micro features include
 	-simple commands (ctrl-s to save)
 	-light on resources
