@@ -18,8 +18,8 @@ struct term {
 	struct {
 		int x;
 		int y;
-		int off_x;
-		int off_y;
+		unsigned int off_x;
+		unsigned int off_y;
 		int r_x;
 		int r_y;
 		int xx;
@@ -42,7 +42,7 @@ struct term {
 typedef struct row {
 	int size;
 	char *chars;
-	int r_size;
+	unsigned int r_size;
 	char *render;
 	int delta;
 } row;
@@ -249,12 +249,12 @@ void drawScreen ()
 /* Draw all the appropriate lines (following cursor) to the screen */
 void drawLines (void)
 {
-	static int line = 0, ln, i;
+	static int ln, i;
 	/* move to the beginning of the screen */
 	//lnMove(0, 0);
 
-	for (i = 0; i < t.dim.y; i++) {
-		if (i >= rows.rownum) break;
+	for (i = 0, ln = 0; i < t.dim.y; i++) {
+		if (i >= rows.rownum - 1) break;
 		ln = i + t.cur.off_y;
 		
 		/* Draw the line number */
@@ -272,7 +272,7 @@ void drawLines (void)
 
 		//attroff(COLOR_PAIR(2));
 		
-		lnMove(++line, 0);
+		lnMove(i + 1, 0);
 	}
 	lnMove(t.cur.y, t.cur.x);
 }
@@ -576,7 +576,7 @@ void rowAddRow (int pos) // WIP; TO DOCUMENT
 	char *s = NULL;
 	// Move away other lines
 	//copy old last line to new space
-	rowAddLast(rows.rw[rows.rownum].chars, rows.rw[rows.rownum].size);
+	rowAddLast(rows.rw[rows.rownum - 1].chars, rows.rw[rows.rownum - 1].size);
 
 	for (int last = rows.rownum - 1; last > pos; last--) {
 		rowCpy(&rows.rw[last], &rows.rw[last - 1]);
@@ -635,7 +635,7 @@ void updateInfo (void)
 {
 	getmaxyx(stdscr, t.dim.y, t.dim.x);
 	t.dim.y -= 1;
-	t.pad = decimalSize(rows.rownum);
+	t.pad = decimalSize(rows.rownum - 1);
 	t.dim.x -= t.pad + 1;
 }
 
