@@ -254,8 +254,8 @@ void drawLines (void)
 	//lnMove(0, 0);
 
 	for (i = 0, ln = 0; i < t.dim.y; i++) {
-		if (i >= rows.rownum - 1) break;
 		ln = i + t.cur.off_y;
+		if (ln >= rows.rownum) break;
 		
 		/* Draw the line number */
 		attron(COLOR_PAIR(1));
