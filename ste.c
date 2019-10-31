@@ -100,7 +100,7 @@ int main (int argc, char *argv[])
 	rowInit();
 
 	/* Try to open the file */
-	if (argc != 2) {
+	if (argc < 2) {
 		perror("File not found");
 		exit(1);
 	} else fileOpen(argv[1]);
@@ -110,7 +110,7 @@ int main (int argc, char *argv[])
 	termInit();
 
 	/* Set the statusbar left (static) message */
-	sprintf(t.statusbar, "%s : %s %d lines %dx%d", argv[0], argv[1], rows.rownum, t.dim.y, t.dim.y);
+	sprintf(t.statusbar, "%s : %s %d lines %dx%d", argv[0], argv[1], rows.rownum, t.dim.y, t.dim.x);
 
 	/* remember the initial row number */
 	int irow = decimalSize(rows.rownum);
@@ -266,8 +266,8 @@ void drawLines (void)
 		//if (ln == t.cur.y + t.cur.off_y) attron(COLOR_PAIR(2));
 		
 		/* Draw the line matcing render memory */
-		if (rows.rw[ln].r_size >= t.cur.off_x) {
-			addnstr(&rows.rw[ln].render[t.cur.off_x], t.dim.x + 1 - rows.rw[ln].delta);
+		if (rows.rw[ln].r_size > t.cur.off_x) {
+			addnstr(&rows.rw[ln].render[t.cur.off_x], t.dim.x + 1);
 		}
 
 		//attroff(COLOR_PAIR(2));
@@ -321,7 +321,7 @@ int curRealToRender (row *rw, int c_x)
 void fileOpen (char *filename)
 {
 	FILE *fp = fopen(filename, "r");
-	if (!fp) termDie("Cannot open file");
+	if (fp == NULL) termDie("Cannot open file");
 
 	/* Init the linebuffer */
 	char *line = NULL;
@@ -539,7 +539,7 @@ void updateScroll (void)
 		
 		t.cur.x = t.dim.x;
 		
-	} else if (t.cur.x <= 0 && t.cur.off_x > 0) {
+	} else if (t.cur.x < 0 && t.cur.off_x > 0) {
 		t.cur.off_x--;
 		t.cur.x = 0;
 	}
