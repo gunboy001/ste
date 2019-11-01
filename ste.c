@@ -44,7 +44,6 @@ typedef struct row {
 	char *chars;
 	unsigned int r_size;
 	char *render;
-	int delta;
 } row;
 
 /* Rows structure (or file buffer)
@@ -251,7 +250,6 @@ void drawLines (void)
 {
 	static int ln, i;
 	/* move to the beginning of the screen */
-	//lnMove(0, 0);
 
 	for (i = 0, ln = 0; i < t.dim.y; i++) {
 		ln = i + t.cur.off_y;
@@ -263,14 +261,10 @@ void drawLines (void)
 		attroff(COLOR_PAIR(1));
 		lnMove(i, 0);
 
-		//if (ln == t.cur.y + t.cur.off_y) attron(COLOR_PAIR(2));
-		
 		/* Draw the line matcing render memory */
 		if (rows.rw[ln].r_size > t.cur.off_x) {
 			addnstr(&rows.rw[ln].render[t.cur.off_x], t.dim.x + 1);
 		}
-
-		//attroff(COLOR_PAIR(2));
 		
 		lnMove(i + 1, 0);
 	}
@@ -354,6 +348,7 @@ void rowAddLast (char *s, int len)
 	/* Allocate memory for the line and copy it
 	 * at the current row number */
 	rows.rw[rows.rownum].chars = malloc(len  + 1);
+	if (rows.rw[rows.rownum].chars == NULL) termDie("malloc in rowAddLast chars");
 	memcpy(rows.rw[rows.rownum].chars, s, len);
 	rows.rw[rows.rownum].chars[len] = '\0';
 	rows.rw[rows.rownum].size = len;
@@ -374,7 +369,6 @@ void updateRender (row *rw)
 	/* Render is long as size with the added tab spaces - 1
 	 * (we already count for the \t as a char) */
 	rw->render = malloc(rw->size + tabs * (TABSIZE - 1) + 1);
-
 	if (rw->render == NULL) termDie ("malloc in updateRender");
 
 	/* put all the characters (substituing all special chars)
@@ -409,6 +403,7 @@ void rowAddChar (row *rw, char c) // WIP
 
 	// reallocate mem and inc size
 	rw->chars = malloc(rw->size + 2);
+	if (rw->chars == NULL) termDie("malloc in rowAddchar");
 	rw->size++;
 
 	// copy bf cursor
@@ -439,6 +434,7 @@ void rowDeleteChar (row *rw, int m) // WIP
 	if (s[t.cur.xx] == '\0' && m) return;
 
 	rw->chars = malloc(rw->size);
+	if (rw->chars == NULL) termDie("malloc in rowDeleteChar");
 	rw->size--;
 
 	// Backspace
@@ -585,14 +581,17 @@ void rowAddRow (int pos) // WIP; TO DOCUMENT
 	//copy previous row
 	int l = rows.rw[pos].size - t.cur.xx;
 	s = malloc(l + 1);
+	if (s == NULL) termDie("malloc in rowAddRow s");
 	memcpy(s, &rows.rw[pos].chars[t.cur.xx], l);
 	s[l] = '\0';
 	// Delete prev row until cursor
 	char *p = malloc(t.cur.xx + 1);
+	if (p == NULL) termDie("malloc in rowAddRow p");
 	memcpy(p, rows.rw[pos].chars, t.cur.xx);
 	p[t.cur.xx] = '\0';
 	rowFree(&rows.rw[pos]);
 	rows.rw[pos].chars = malloc(t.cur.xx + 1);
+	if (rows.rw[pos].chars == NULL) termDie("malloc in rowAddRow chars until cursor");
 	memcpy(rows.rw[pos].chars, p, t.cur.xx + 1);
 	free(p);
 	rows.rw[pos].size = t.cur.xx;
@@ -601,6 +600,7 @@ void rowAddRow (int pos) // WIP; TO DOCUMENT
 	if (pos != rows.rownum - 1) {
 		rowFree(&rows.rw[pos + 1]);
 		rows.rw[pos + 1].chars = malloc(strlen(s) + 1);
+		if (rows.rw[pos + 1].chars == NULL) termDie("malloc in rowAddRow chars next row");
 		memcpy(rows.rw[pos + 1].chars, s, strlen(s) + 1);
 		rows.rw[pos + 1].size = strlen(s);
 		updateRender(&rows.rw[pos + 1]);
@@ -624,6 +624,7 @@ void rowCpy (row *to, row *from) // WIP
 { 
 	rowFree(to);
 	to->chars = (char*) malloc(strlen(from->chars) + 1);
+	if (to->chars == NULL) termDie("malloc in rowCpy");
 	to->size = from->size;
 	memcpy(to->chars, from->chars, to->size);
 	updateRender(to);
