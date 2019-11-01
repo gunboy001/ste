@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -pedantic -Werror -Warray-bounds
-OFLAGS=-O3
+OFLAGS=-O0
 LFLAGS=-lncursesw 
 #-ltcmalloc
 DFLAGS=-g -O0 -v -da -Q

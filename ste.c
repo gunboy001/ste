@@ -6,6 +6,7 @@
 /* defines */
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
 #define TABSIZE 4 // Tab size as used in render
+#define STAT_SIZE 128
 
 /* main data structure containing:
  *	-cursor position
@@ -31,7 +32,7 @@ struct term {
 		int y;
 	} dim;
 
-	char statusbar[30];
+	char statusbar[STAT_SIZE];
 	int pad;
 } t;
 
@@ -109,7 +110,8 @@ int main (int argc, char *argv[])
 	termInit();
 
 	/* Set the statusbar left (static) message */
-	sprintf(t.statusbar, "%s : %s %d lines %dx%d", argv[0], argv[1], rows.rownum, t.dim.y, t.dim.x);
+	//caused 74e185d
+	snprintf(t.statusbar, STAT_SIZE, "%s %d lines %dx%d", argv[1], rows.rownum, t.dim.y, t.dim.x);
 
 	/* remember the initial row number */
 	int irow = decimalSize(rows.rownum);
@@ -262,6 +264,7 @@ void drawLines (void)
 		lnMove(i, 0);
 
 		/* Draw the line matcing render memory */
+		if (&rows.rw[ln] == NULL) termDie("drawlines NULL");
 		if (rows.rw[ln].r_size > t.cur.off_x) {
 			addnstr(&rows.rw[ln].render[t.cur.off_x], t.dim.x + 1);
 		}
@@ -343,7 +346,6 @@ void rowAddLast (char *s, int len)
 	row *newr = reallocarray(rows.rw, rows.rownum + 1, sizeof(row));
 	if (newr == NULL) termDie("realloc in rowAddLast");
 	else rows.rw = newr;
-	//rows.rw = realloc(rows.rw, sizeof(row) * (rows.rownum + 1));
 
 	/* Allocate memory for the line and copy it
 	 * at the current row number */
@@ -483,7 +485,8 @@ void cursorMove (int a)
 					t.cur.y++;
 					t.cur.yy++;
 					if (t.cur.off_x) t.cur.off_x = 0;
-					t.cur.x = rows.rw[t.cur.yy].size;
+					//t.cur.x = rows.rw[t.cur.yy].size;
+					t.cur.x = 0;
 				}
 			} else t.cur.x++;
 			break;
