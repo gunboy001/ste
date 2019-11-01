@@ -1,0 +1,1 @@
+{"version":1,"ops":[{"author":{"id":"77a8222fdd04cd934283ef7ebd456006fdbe7679"},"files":null,"message":"need to catch the resize signal and upate terminal info","timestamp":1572604042,"title":"does not update on terminal resize","type":1}]}
