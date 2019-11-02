@@ -1,8 +1,7 @@
 CC=gcc
 CFLAGS=-Wall -Wextra -pedantic -Werror -Warray-bounds
-OFLAGS=-O0
-LFLAGS=-lncursesw 
-#-ltcmalloc
+OFLAGS=-O3 -ltcmalloc
+LFLAGS=-lncursesw
 DFLAGS=-g -O0 -v -da -Q
 
 ste: ste.c
