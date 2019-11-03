@@ -71,6 +71,10 @@ static inline void rowInit (void);
 static void rowAddChar (row *rw, char c);
 static void rowDeleteChar (row *rw, int m);
 static void rowCpy (row *to, row *from);
+static void rowAddRow (int pos);
+static void rowFree (row *rw);
+static void rowAddString (row *rw, char *s, int len, int pos);
+static void rowDeleteRow (int pos);
 
 /* Terminal operations */
 static void termInit (void);
@@ -85,13 +89,10 @@ void fileSave (char *filename);
 static void rowAddLast (char *s, int len);
 
 /* garbage */
-
+static inline void handleBackspace (void);
 /* testing */
 static void updateInfo (void);
-static void rowAddRow (int pos);
 static int whatsThat (void);
-static void rowFree (row *rw);
-
 
 /* --------------------------------- main ------------------------------------ */
 int main (int argc, char *argv[])
@@ -134,7 +135,8 @@ int main (int argc, char *argv[])
 				cursorMove(c);
 				break;
 			case (KEY_BACKSPACE):
-				rowDeleteChar(&rows.rw[t.cur.yy], 0);
+				handleBackspace();
+				break;
 				break;
 			case (KEY_DC):
 				rowDeleteChar(&rows.rw[t.cur.yy], 1);
@@ -630,7 +632,50 @@ void rowCpy (row *to, row *from) // WIP
 	if (to->chars == NULL) termDie("malloc in rowCpy");
 	to->size = from->size;
 	memcpy(to->chars, from->chars, to->size);
+	to->chars[to->size] = '\0';
 	updateRender(to);
+}
+
+void rowAddString (row *rw, char *s, int len, int pos)
+{
+	char *temp = realloc(rw->chars, rw->size + len + 1);
+	if (temp == NULL) termDie("realloc in rowAddString");
+	rw->chars = temp;
+	if (pos == -1 || pos == rw->size) {
+		memcpy(&rw->chars[rw->size], s, len);
+		rw->size += len;
+		rw->chars[rw->size] = '\0';
+	} else {
+		memcpy(&rw->chars[rw->size], &rw->chars[rw->size - len], len);
+		memcpy(&rw->chars[rw->size - len], s, len);
+		rw->size += len;
+		rw->chars[rw->size] = '\0';
+	}
+	updateRender(rw);
+}
+
+void handleBackspace (void)
+{
+	if (t.cur.x <= 0 && t.cur.yy > 0) {
+		t.cur.x = rows.rw[t.cur.yy - 1].size;
+		rowAddString(&rows.rw[t.cur.yy - 1], rows.rw[t.cur.yy].chars, rows.rw[t.cur.yy].size, -1);
+		rowDeleteRow(t.cur.yy);
+		t.cur.y--;
+	} else {
+		rowDeleteChar(&rows.rw[t.cur.yy], 0);
+	}
+}
+
+void rowDeleteRow (int pos)
+{
+	for (; pos < rows.rownum - 1; pos++) {
+		rowCpy(&rows.rw[pos], &rows.rw[pos + 1]); // rowcpy already frees the row
+	}
+	rows.rownum--;
+	rowFree(&rows.rw[rows.rownum]);
+	row *temp = realloc(rows.rw, sizeof(row) * rows.rownum);
+	if (temp == NULL) termDie("malloc in rowDeleteRow");
+	rows.rw = temp;
 }
 
 /*--------------------------------- garbage ------------------------------------*/
