@@ -22,7 +22,7 @@ struct term {
 		unsigned int off_x;
 		unsigned int off_y;
 		int r_x;
-		int r_y;
+		int d_y;
 		int xx;
 		int yy;
 	} cur;
@@ -89,7 +89,7 @@ void fileSave (char *filename);
 static void rowAddLast (char *s, int len);
 
 /* garbage */
-static inline void handleBackspace (void);
+static void handleDel (int select);
 /* testing */
 static void updateInfo (void);
 static int whatsThat (void);
@@ -111,7 +111,6 @@ int main (int argc, char *argv[])
 	termInit();
 
 	/* Set the statusbar left (static) message */
-	//caused 74e185d
 	snprintf(t.statusbar, STAT_SIZE, "%s %d lines %dx%d", argv[1], rows.rownum, t.dim.y, t.dim.x);
 
 	/* remember the initial row number */
@@ -135,11 +134,10 @@ int main (int argc, char *argv[])
 				cursorMove(c);
 				break;
 			case (KEY_BACKSPACE):
-				handleBackspace();
-				break;
+				handleDel(0);
 				break;
 			case (KEY_DC):
-				rowDeleteChar(&rows.rw[t.cur.yy], 1, t.cur.xx);
+				handleDel(1);
 				break;
 			case (KEY_ENTER):
 			case (10):
@@ -314,52 +312,6 @@ int curRealToRender (row *rw, int c_x)
 	return r_x;
 }
 
-/* -------------------------------- draw operations -------------------------------- */
-
-/* Open a file and put it into a buffer line by line */
-void fileOpen (char *filename)
-{
-	FILE *fp = fopen(filename, "r");
-	if (fp == NULL) termDie("Cannot open file");
-
-	/* Init the linebuffer */
-	char *line = NULL;
-	/* Set linecap to 0 so getline will atumatically allocate
-	 * memory for the line buffer*/
-	size_t linecap = 0;
-	ssize_t linelen;
-
-	/* getline returns -1 if no new line is present */
-	while ((linelen = getline(&line, &linecap, fp)) != -1) {
-		while (linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
-			linelen--;
-		rowAddLast(line, linelen);
-	}
-	/* free the line buffer */
-	free(line);
-	/* close the file */
-	fclose(fp);
-}
-
-/* Add a row to the file buffer */
-void rowAddLast (char *s, int len)
-{
-	/* Extend the block of memory containing the lines */
-	row *newr = reallocarray(rows.rw, rows.rownum + 1, sizeof(row));
-	if (newr == NULL) termDie("realloc in rowAddLast");
-	else rows.rw = newr;
-
-	/* Allocate memory for the line and copy it
-	 * at the current row number */
-	rows.rw[rows.rownum].chars = malloc(len  + 1);
-	if (rows.rw[rows.rownum].chars == NULL) termDie("malloc in rowAddLast chars");
-	memcpy(rows.rw[rows.rownum].chars, s, len);
-	rows.rw[rows.rownum].chars[len] = '\0';
-	rows.rw[rows.rownum].size = len;
-	updateRender(&rows.rw[rows.rownum]);
-	rows.rownum++;
-}
-
 void updateRender (row *rw)
 {
 	/* count the special characters (only tabs for now) */
@@ -389,6 +341,54 @@ void updateRender (row *rw)
 	}
 	rw->render[off] = '\0';
 	rw->r_size = off;
+}
+
+/* -------------------------------- draw operations -------------------------------- */
+
+/* Open a file and put it into a buffer line by line */
+void fileOpen (char *filename)
+{
+	FILE *fp = fopen(filename, "r");
+	if (fp == NULL) termDie("Cannot open file");
+
+	/* Init the linebuffer */
+	char *line = NULL;
+	/* Set linecap to 0 so getline will atumatically allocate
+	 * memory for the line buffer*/
+	size_t linecap = 0;
+	ssize_t linelen;
+
+	/* getline returns -1 if no new line is present */
+	while ((linelen = getline(&line, &linecap, fp)) != -1) {
+		while (linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
+			linelen--;
+		rowAddLast(line, linelen);
+	}
+	/* free the line buffer */
+	free(line);
+	/* close the file */
+	fclose(fp);
+}
+
+/*------------------------------------- file operations ----------------------------------*/
+
+/* Add a row to the file buffer */
+void rowAddLast (char *s, int len)
+{
+	/* Extend the block of memory containing the lines */
+	row *newr = reallocarray(rows.rw, rows.rownum + 1, sizeof(row));
+	if (newr == NULL) termDie("realloc in rowAddLast");
+	else rows.rw = newr;
+
+	/* Allocate memory for the line and copy it
+	 * at the current row number */
+	rows.rw[rows.rownum].chars = malloc(len  + 1);
+	if (rows.rw[rows.rownum].chars == NULL) termDie("malloc in rowAddLast chars");
+	memcpy(rows.rw[rows.rownum].chars, s, len);
+	rows.rw[rows.rownum].chars[len] = '\0';
+	rows.rw[rows.rownum].size = len;
+	updateRender(&rows.rw[rows.rownum]);
+	rows.rownum++;
 }
 
 void rowInit (void)
@@ -463,113 +463,6 @@ void rowDeleteChar (row *rw, int select, int pos) // WIP
 	
 	free(s);
 	updateRender(rw);
-}
-
-/* ----------------------------- file operations --------------------------- */
-
-/* take care of the cursor movement */
-void cursorMove (int a)
-{
-	switch (a) {
-		case (KEY_LEFT):
-			if (t.cur.x <= 0 && !t.cur.off_x) {
-				if (t.cur.y) {
-					t.cur.y--;
-					t.cur.yy--;
-					t.cur.x = rows.rw[t.cur.yy].size;
-				}
-			} else t.cur.x--;
-			break;
-			
-		case (KEY_RIGHT):
-			if (t.cur.xx >= rows.rw[t.cur.yy].size) {
-				if (t.cur.yy < rows.rownum - 1) {
-					t.cur.y++;
-					t.cur.yy++;
-					if (t.cur.off_x) t.cur.off_x = 0;
-					//t.cur.x = rows.rw[t.cur.yy].size;
-					t.cur.x = 0;
-				}
-			} else t.cur.x++;
-			break;
-			
-		case (KEY_UP):
-			if (t.cur.yy > 0) {
-				if (t.cur.y) {
-					t.cur.y--;
-					t.cur.yy--;
-				if (t.cur.xx > rows.rw[t.cur.yy].size) {
-					if (t.cur.off_x) t.cur.off_x = 0;
-					t.cur.x = rows.rw[t.cur.yy].size;
-				}
-			}
-			break;
-
-		case (KEY_DOWN):
-			if (t.cur.yy < rows.rownum - 1) {
-				t.cur.y++;
-				t.cur.yy++;
-				if (t.cur.xx > rows.rw[t.cur.yy].size) {
-					if (t.cur.off_x) t.cur.off_x = 0;
-					t.cur.x = rows.rw[t.cur.yy].size;
-				}
-			}
-			break;
-		}
-	}
-}
-
-void updateScroll (void)
-{
-	/* Set y offset */
-	if (t.cur.y >= t.dim.y) {
-		if (t.cur.y == t.dim.y) t.cur.off_y++;
-		else t.cur.off_y += t.cur.y - t.dim.y;
-		
-		t.cur.y = t.dim.y - 1;
-		
-	} else if (t.cur.y <= 0 && t.cur.off_y > 0) {
-		t.cur.off_y--;
-		t.cur.y = 0;
-	}
-
-	/* Set x offeset */
-	if (t.cur.x >= t.dim.x) {
-		if (t.cur.x == t.dim.x - 1) t.cur.off_x++;
-		else t.cur.off_x += t.cur.x - t.dim.x;
-		
-		t.cur.x = t.dim.x;
-		
-	} else if (t.cur.x < 0 && t.cur.off_x > 0) {
-		t.cur.off_x--;
-		t.cur.x = 0;
-	}
-	/* convert the cursor from real to render */
-	t.cur.yy = t.cur.y + t.cur.off_y;
-	t.cur.xx = t.cur.x + t.cur.off_x;
-	t.cur.r_x = curRealToRender(&rows.rw[t.cur.yy], t.cur.x);
-}
-
-/*---------------------------------- scroll ------------------------------------*/
-
-/* See whats under the cursor (memory) */
-int whatsThat (void) {
-	int c = rows.rw[t.cur.yy].chars[t.cur.xx];
-	switch (c) {
-		case ('\t'):
-			return '^';
-			break;
-		case (' '):
-			return '~';
-			break;
-		case ('\0'):
-			return '.';
-			break;
-		default:
-			return c;
-			break;
-	}
-	return 0;
 }
 
 void rowAddRow (int pos) // WIP; TO DOCUMENT
@@ -654,18 +547,6 @@ void rowAddString (row *rw, char *s, int len, int pos)
 	updateRender(rw);
 }
 
-void handleBackspace (void)
-{
-	if (t.cur.x <= 0 && t.cur.yy > 0) {
-		t.cur.x = rows.rw[t.cur.yy - 1].size;
-		rowAddString(&rows.rw[t.cur.yy - 1], rows.rw[t.cur.yy].chars, rows.rw[t.cur.yy].size, -1);
-		rowDeleteRow(t.cur.yy);
-		t.cur.y--;
-	} else {
-		rowDeleteChar(&rows.rw[t.cur.yy], 0, t.cur.xx);
-	}
-}
-
 void rowDeleteRow (int pos)
 {
 	for (; pos < rows.rownum - 1; pos++) {
@@ -676,6 +557,136 @@ void rowDeleteRow (int pos)
 	row *temp = realloc(rows.rw, sizeof(row) * rows.rownum);
 	if (temp == NULL) termDie("malloc in rowDeleteRow");
 	rows.rw = temp;
+}
+
+/* ----------------------------- row operations --------------------------- */
+
+/* take care of the cursor movement */
+void cursorMove (int a)
+{
+	switch (a) {
+		case (KEY_LEFT):
+			if (t.cur.x <= 0 && !t.cur.off_x) {
+				if (t.cur.y) {
+					t.cur.y--;
+					t.cur.yy--;
+					t.cur.x = rows.rw[t.cur.yy].size;
+				}
+			} else t.cur.x--;
+			break;
+			
+		case (KEY_RIGHT):
+			if (t.cur.xx >= rows.rw[t.cur.yy].size) {
+				if (t.cur.yy < rows.rownum - 1) {
+					t.cur.y++;
+					t.cur.yy++;
+					if (t.cur.off_x) t.cur.off_x = 0;
+					//t.cur.x = rows.rw[t.cur.yy].size;
+					t.cur.x = 0;
+				}
+			} else t.cur.x++;
+			break;
+			
+		case (KEY_UP):
+			if (t.cur.yy > 0) {
+				if (t.cur.y) {
+					t.cur.y--;
+					t.cur.yy--;
+				if (t.cur.xx > rows.rw[t.cur.yy].size) {
+					if (t.cur.off_x) t.cur.off_x = 0;
+					t.cur.x = rows.rw[t.cur.yy].size;
+				}
+			}
+			break;
+
+		case (KEY_DOWN):
+			if (t.cur.yy < rows.rownum - 1) {
+				t.cur.y++;
+				t.cur.yy++;
+				if (t.cur.xx > rows.rw[t.cur.yy].size) {
+					if (t.cur.off_x) t.cur.off_x = 0;
+					t.cur.x = rows.rw[t.cur.yy].size;
+				}
+			}
+			break;
+		}
+	}
+}
+
+void updateScroll (void)
+{
+	/* Set y offset */
+	if (t.cur.y >= t.dim.y) {
+		if (t.cur.y == t.dim.y) t.cur.off_y++;
+		else t.cur.off_y += t.cur.y - t.dim.y;
+		
+		t.cur.y = t.dim.y - 1;
+		
+	} else if (t.cur.y <= 0 && t.cur.off_y > 0) {
+		t.cur.off_y--;
+		t.cur.y = 0;
+	}
+
+	/* Set x offeset */
+	if (t.cur.x >= t.dim.x) {
+		if (t.cur.x == t.dim.x - 1) t.cur.off_x++;
+		else t.cur.off_x += t.cur.x - t.dim.x;
+		
+		t.cur.x = t.dim.x;
+		
+	} else if (t.cur.x < 0 && t.cur.off_x > 0) {
+		t.cur.off_x--;
+		t.cur.x = 0;
+	}
+	/* convert the cursor from real to render */
+	t.cur.yy = t.cur.y + t.cur.off_y;
+	t.cur.xx = t.cur.x + t.cur.off_x;
+	t.cur.r_x = curRealToRender(&rows.rw[t.cur.yy], t.cur.x);
+	t.cur.d_x = t.cur.r_x - t.cur.x;
+}
+
+/*---------------------------------- scroll ------------------------------------*/
+
+/* See whats under the cursor (memory) */
+int whatsThat (void) {
+	int c = rows.rw[t.cur.yy].chars[t.cur.xx];
+	switch (c) {
+		case ('\t'):
+			return '^';
+			break;
+		case (' '):
+			return '~';
+			break;
+		case ('\0'):
+			return '.';
+			break;
+		default:
+			return c;
+			break;
+	}
+	return 0;
+}
+
+
+void handleDel (int select)
+{	
+	if (!select) {
+		if (t.cur.xx <= 0 && t.cur.yy > 0) {
+			t.cur.x = rows.rw[t.cur.yy - 1].size;
+			rowAddString(&rows.rw[t.cur.yy - 1], rows.rw[t.cur.yy].chars, rows.rw[t.cur.yy].size, -1);
+			rowDeleteRow(t.cur.yy);
+			t.cur.y--;
+		} else {
+			rowDeleteChar(&rows.rw[t.cur.yy], 0, t.cur.xx);
+		}
+	} else {
+		if (t.cur.xx >= rows.rw[t.cur.yy].size) {
+			rowAddString(&rows.rw[t.cur.yy], rows.rw[t.cur.yy + 1].chars, rows.rw[t.cur.yy + 1].size, -1);
+			rowDeleteRow(t.cur.yy + 1);
+		} else {
+			rowDeleteChar(&rows.rw[t.cur.yy], 1, t.cur.xx);
+		}
+	}
 }
 
 /*--------------------------------- garbage ------------------------------------*/
