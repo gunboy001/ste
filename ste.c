@@ -22,7 +22,7 @@ struct term {
 		unsigned int off_x;
 		unsigned int off_y;
 		int r_x;
-		int d_y;
+		int d_x;
 		int xx;
 		int yy;
 	} cur;
@@ -332,8 +332,9 @@ void updateRender (row *rw)
 	for (i = 0, off = 0; i < rw->size; i++) {
 		if (rw->chars[i] == '\t') {
 			for (int j = 0; j < TABSIZE; j++){
-				if (!j) rw->render[off++] = '|'; 
-				else rw->render[off++] = ' ';
+				//if (!j) rw->render[off++] = '|'; 
+				//else rw->render[off++] = ' ';
+				rw->render[off++] = ' ';
 			}
 		} else {
 			rw->render[off++] = rw->chars[i];
@@ -638,7 +639,8 @@ void updateScroll (void)
 		t.cur.off_x--;
 		t.cur.x = 0;
 	}
-	/* convert the cursor from real to render */
+	/* convert the cursor from real to render
+	 * and update other cursor info */
 	t.cur.yy = t.cur.y + t.cur.off_y;
 	t.cur.xx = t.cur.x + t.cur.off_x;
 	t.cur.r_x = curRealToRender(&rows.rw[t.cur.yy], t.cur.x);
