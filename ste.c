@@ -68,8 +68,8 @@ static int curRealToRender (row *rw, int c_x);
 
 /* Row operations */
 static inline void rowInit (void);
-static void rowAddChar (row *rw, char c);
-static void rowDeleteChar (row *rw, int m);
+static void rowAddChar (row *rw, char c, int pos);
+static void rowDeleteChar (row *rw, int select, int pos);
 static void rowCpy (row *to, row *from);
 static void rowAddRow (int pos);
 static void rowFree (row *rw);
@@ -139,7 +139,7 @@ int main (int argc, char *argv[])
 				break;
 				break;
 			case (KEY_DC):
-				rowDeleteChar(&rows.rw[t.cur.yy], 1);
+				rowDeleteChar(&rows.rw[t.cur.yy], 1, t.cur.xx);
 				break;
 			case (KEY_ENTER):
 			case (10):
@@ -156,7 +156,7 @@ int main (int argc, char *argv[])
 				break;
 			default:
 				if (c == KEY_STAB) c = '\t';
-				rowAddChar(&rows.rw[t.cur.yy], c);
+				rowAddChar(&rows.rw[t.cur.yy], c, t.cur.xx);
 		}
 		if (decimalSize(rows.rownum) - irow) updateInfo();
 	}
@@ -397,7 +397,7 @@ void rowInit (void)
 	rows.rownum = 0;
 }
 
-void rowAddChar (row *rw, char c) // WIP
+void rowAddChar (row *rw, char c, int pos) // WIP
 {
 	// Error checking (allow tab)
 	if (!c || (iscntrl(c) && c != '\t')) return;
@@ -411,15 +411,15 @@ void rowAddChar (row *rw, char c) // WIP
 	rw->size++;
 
 	// copy bf cursor
-	for (i = 0; i < t.cur.xx; i++) {
+	for (i = 0; i < pos; i++) {
 		rw->chars[i] = s[i];
 	}
 
 	// add at cursor
-	rw->chars[t.cur.xx++] = c;
+	rw->chars[pos++] = c;
 
 	//copy after cursor 
-	for (i = t.cur.xx; i < rw->size + 1; i++) {
+	for (i = pos; i < rw->size + 1; i++) {
 			rw->chars[i] = s[i - 1];
 	}
 	
@@ -429,35 +429,35 @@ void rowAddChar (row *rw, char c) // WIP
 	t.cur.x++;
 }
 
-void rowDeleteChar (row *rw, int m) // WIP
+void rowDeleteChar (row *rw, int select, int pos) // WIP
 {
 	char *s = rw->chars;
 	//Do not delete NULL char
-	if (s[t.cur.xx - 1] == '\0' && t.cur.xx) return;
-	if (!t.cur.xx && !m) return;
-	if (s[t.cur.xx] == '\0' && m) return;
+	if (s[pos - 1] == '\0' && pos) return;
+	if (!pos && !select) return;
+	if (s[pos] == '\0' && select) return;
 
 	rw->chars = malloc(rw->size);
 	if (rw->chars == NULL) termDie("malloc in rowDeleteChar");
 	rw->size--;
 
 	// Backspace
-	if (!m) {
-		for (int i = 0; i < t.cur.xx - 1; i++)
+	if (!select) {
+		for (int i = 0; i < pos - 1; i++)
 			rw->chars[i] = s[i];
 	
-		for (int i = t.cur.xx; i < rw->size + 1; i++)
+		for (int i = pos; i < rw->size + 1; i++)
 			rw->chars[i - 1] = s[i];
 
 		t.cur.x--;
 	// Delete			
 	} else {
-		if(t.cur.xx) {
-			for (int i = 0; i < t.cur.xx; i++)
+		if(pos) {
+			for (int i = 0; i < pos; i++)
 				rw->chars[i] = s[i];
 		}
 	
-		for (int i = t.cur.xx; i < rw->size + 1; i++)
+		for (int i = pos; i < rw->size + 1; i++)
 			rw->chars[i] = s[i + 1];
 	}
 	
@@ -662,7 +662,7 @@ void handleBackspace (void)
 		rowDeleteRow(t.cur.yy);
 		t.cur.y--;
 	} else {
-		rowDeleteChar(&rows.rw[t.cur.yy], 0);
+		rowDeleteChar(&rows.rw[t.cur.yy], 0, t.cur.xx);
 	}
 }
 
