@@ -1,1 +1,1 @@
-{"version":1,"ops":[{"author":{"id":"77a8222fdd04cd934283ef7ebd456006fdbe7679"},"files":null,"message":"change things so that t.cur.x follows memory and\nt.cur.off_x and t.cur.r_x are taken count just by \nthe render functions.","timestamp":1572886460,"title":"make t.cur.x follow memory","type":1}]}
+{"version":1,"ops":[{"author":{"id":"77a8222fdd04cd934283ef7ebd456006fdbe7679"},"status":2,"timestamp":1572893352,"type":4}]}
