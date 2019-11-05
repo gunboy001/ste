@@ -1,1 +1,1 @@
-{"version":1,"ops":[{"author":{"id":"77a8222fdd04cd934283ef7ebd456006fdbe7679"},"files":null,"message":"offset follows real curosor (matching memory) instead of\nrender cursor","timestamp":1572820968,"title":"horizontal scroll does not work","type":1}]}
+{"version":1,"ops":[{"author":{"id":"77a8222fdd04cd934283ef7ebd456006fdbe7679"},"status":2,"timestamp":1572968168,"type":4}]}
