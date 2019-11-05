@@ -780,9 +780,10 @@ void curUpdateRender ()
 		t.cur.off_x -= t.cur.off_x - t.cur.r_x;
 		t.cur.r_x = 0;
 	
-	} else if (t.cur.r_x >= t.cur.off_x + t.dim.x) {
-		t.cur.off_x += t.cur.r_x - t.cur.off_x - t.dim.x;
-		t.cur.r_x = t.dim.x - 1;
+	} else if (t.cur.r_x > t.cur.off_x + t.dim.x) {
+		if (t.cur.r_x == t.cur.off_x + t.dim.x) t.cur.off_x++;
+		else t.cur.off_x += t.cur.r_x - t.cur.off_x - t.dim.x;
+		t.cur.r_x = t.dim.x;
 	}
 }
 /*--------------------------------- testing ------------------------------------*/
