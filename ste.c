@@ -19,12 +19,13 @@ struct term {
 	struct {
 		int x;
 		int y;
-		unsigned int off_x;
-		unsigned int off_y;
+		int off_x;
+		int off_y;
 		int r_x;
-		int d_x;
+		int r_y;
+		//int d_x;
 		//int xx;
-		int yy;
+		//int yy;
 	} cur;
 
 	struct {
@@ -43,7 +44,7 @@ struct term {
 typedef struct row {
 	int size;
 	char *chars;
-	unsigned int r_size;
+	int r_size;
 	char *render;
 } row;
 
@@ -60,11 +61,11 @@ static void drawBar (char *s);
 static void drawScreen ();
 static void drawLines (void);
 static void updateRender (row *rw);
-static void updateOffset (void);
+static void curUpdateRender (void);
 static void cursorMove(int a);
 static int decimalSize (int n);
 static inline void lnMove (int y, int x);
-static int curRealToRender (row *rw, int c_x);
+//static int curRealToRender (row *rw, int c_x);
 
 /* Row operations */
 static inline void rowInit (void);
@@ -142,22 +143,24 @@ int main (int argc, char *argv[])
 			case (KEY_ENTER):
 			case (10):
 			case ('\r'):
-				rowAddRow(t.cur.yy);
+				//rowAddRow(t.cur.yy);
+				
+				//t.cur.off_x = 0;
+				rowAddRow(t.cur.y);
 				t.cur.y++;
 				t.cur.x = 0;
-				t.cur.off_x = 0;
 				break;
 			case (KEY_END):
-				t.cur.y = rows.rownum;
-				t.cur.off_y = 0;
+				t.cur.y = rows.rownum - 1;
+				//t.cur.off_y = 0;
 				break;
 			case (KEY_HOME):
 				t.cur.y = 0;
-				t.cur.off_y = 0;
+				//t.cur.off_y = 0;
 				break;
 			default:
 				if (c == KEY_STAB) c = '\t';
-				rowAddChar(&rows.rw[t.cur.yy], c, t.cur.x);
+				rowAddChar(&rows.rw[t.cur.y], c, t.cur.x);
 		}
 		if (decimalSize(rows.rownum) - irow) updateInfo();
 	}
@@ -239,13 +242,13 @@ void drawScreen ()
 	/* Clear the screen */
 	erase();
 	/* Update Scroll */
-	updateOffset();
+	curUpdateRender();
 	/* draw the lines */
 	drawLines();
 	/* draw the bar */
 	drawBar(t.statusbar);
 	/* move back to the cursor position */
-	lnMove(t.cur.y, t.cur.r_x);
+	lnMove(t.cur.r_y, t.cur.r_x);
 	/* refresh the screen */
 	refresh();
 }
@@ -256,7 +259,7 @@ void drawLines (void)
 	static int ln, i;
 	/* move to the beginning of the screen */
 
-	for (i = 0, ln = 0; i < t.dim.y; i++) {
+	for (i = 0, ln = 0; i < t.dim.y + t.cur.off_y; i++) {
 		ln = i + t.cur.off_y;
 		if (ln >= rows.rownum) break;
 		
@@ -293,11 +296,12 @@ void drawBar (char *s)
 	/* Print the message */
 	mvprintw(t.dim.y, 0, s);
 	/* Fill everything else with spaces */
-	for (int i = len; i <= t.dim.x + t.pad; i++)
+	static int i;
+	for (i = len; i <= t.dim.x + t.pad; i++)
 		mvaddch(t.dim.y, i, ' ');
 
 	static char m[40];
-	sprintf(m, "x: %d y: %d Zoom: %c", t.cur.x, t.cur.yy, whatsThat());
+	sprintf(m, "x: %d y: %d Zoom: %c", t.cur.x, t.cur.y, whatsThat());
 	mvaddstr(t.dim.y, t.dim.x + t.pad - strlen(m), m);
 
 	/* Return to normal contrast mode */
@@ -554,7 +558,7 @@ void rowDeleteRow (int pos)
 /* ----------------------------- row operations --------------------------- */
 
 /* take care of the cursor movement */
-void cursorMove (int a)
+/*void cursorMove (int a)
 {
 	switch (a) {
 		case (KEY_LEFT):
@@ -604,11 +608,12 @@ void cursorMove (int a)
 			break;
 		}
 	}
-}
+}*/
 
-void updateOffset (void)
+
+/*void curUpdateRender (void)
 {
-	/* Set y offset */
+	//Set y offset 
 	if (t.cur.y >= t.dim.y) {
 		if (t.cur.y == t.dim.y) t.cur.off_y++;
 		else t.cur.off_y += t.cur.y - t.dim.y;
@@ -620,18 +625,10 @@ void updateOffset (void)
 		t.cur.y = 0;
 	}
 
-	/* Set x offeset */
-	/*if (t.cur.x >= t.dim.x) {
-		if (t.cur.x == t.dim.x - 1) t.cur.off_x++;
-		else t.cur.off_x += t.cur.x - t.dim.x;
-		
-		t.cur.x = t.dim.x;
-		
-	} else if (t.cur.x < 0 && t.cur.off_x > 0) {
-		t.cur.off_x--;
-		t.cur.x = 0;
-	}*/
+	//Old curRealToRender()
 	t.cur.r_x = curRealToRender(&rows.rw[t.cur.yy], t.cur.x);
+
+
 	if (t.cur.r_x >= t.dim.x) {
 		t.cur.off_x += (t.cur.r_x > t.dim.x ) ? (t.cur.r_x - t.dim.x) : 1;
 		t.cur.r_x = t.dim.x - 1;
@@ -639,14 +636,15 @@ void updateOffset (void)
 		t.cur.off_x -= (t.cur.off_x > 0) ? 0 : t.cur.off_x;
 		t.cur.r_x = 0;
 	}
-	/* convert the cursor from real to render
-	 * and update other cursor info */
+	//convert the cursor from real to render
+	 // and update other cursor info
 	t.cur.yy = t.cur.y + t.cur.off_y;
 	//t.cur.xx = t.cur.x + t.cur.off_x;
 	//t.cur.d_x = t.cur.r_x - t.cur.x;
-}
+} */
 
 /* convert the cursor matchoing the memory to the drawn one */
+/*
 int curRealToRender (row *rw, int c_x)
 {
 	static int r_x = 0, i;
@@ -655,13 +653,13 @@ int curRealToRender (row *rw, int c_x)
 		r_x++;
 	}
 	return r_x;
-}
+}*/
 
 /*---------------------------------- scroll ------------------------------------*/
 
 /* See whats under the cursor (memory) */
 int whatsThat (void) {
-	int c = rows.rw[t.cur.yy].chars[t.cur.x];
+	int c = rows.rw[t.cur.y].chars[t.cur.x];
 	switch (c) {
 		case ('\t'):
 			return '^';
@@ -683,20 +681,20 @@ int whatsThat (void) {
 void handleDel (int select)
 {	
 	if (!select) {
-		if (t.cur.x <= 0 && t.cur.yy > 0) {
-			t.cur.x = rows.rw[t.cur.yy - 1].size;
-			rowAddString(&rows.rw[t.cur.yy - 1], rows.rw[t.cur.yy].chars, rows.rw[t.cur.yy].size, -1);
-			rowDeleteRow(t.cur.yy);
+		if (t.cur.x <= 0 && t.cur.y > 0) {
+			t.cur.x = rows.rw[t.cur.y - 1].size;
+			rowAddString(&rows.rw[t.cur.y - 1], rows.rw[t.cur.y].chars, rows.rw[t.cur.y].size, -1);
+			rowDeleteRow(t.cur.y);
 			t.cur.y--;
 		} else {
-			rowDeleteChar(&rows.rw[t.cur.yy], 0, t.cur.x);
+			rowDeleteChar(&rows.rw[t.cur.y], 0, t.cur.x);
 		}
 	} else {
-		if (t.cur.x >= rows.rw[t.cur.yy].size) {
-			rowAddString(&rows.rw[t.cur.yy], rows.rw[t.cur.yy + 1].chars, rows.rw[t.cur.yy + 1].size, -1);
-			rowDeleteRow(t.cur.yy + 1);
+		if (t.cur.x >= rows.rw[t.cur.y].size) {
+			rowAddString(&rows.rw[t.cur.y], rows.rw[t.cur.y + 1].chars, rows.rw[t.cur.y + 1].size, -1);
+			rowDeleteRow(t.cur.y + 1);
 		} else {
-			rowDeleteChar(&rows.rw[t.cur.yy], 1, t.cur.x);
+			rowDeleteChar(&rows.rw[t.cur.y], 1, t.cur.x);
 		}
 	}
 }
@@ -711,4 +709,80 @@ void updateInfo (void)
 	t.dim.x -= t.pad + 1;
 }
 
+/* take care of the cursor movement */
+void cursorMove (int a)
+{
+	switch (a) {
+		case (KEY_LEFT):
+			if (t.cur.x <= 0) {
+				if (t.cur.y) {
+					t.cur.y--;
+					t.cur.x = rows.rw[t.cur.y].size;
+				}
+			} else
+				t.cur.x--;
+			break;
+			
+		case (KEY_RIGHT):
+				if (t.cur.x >= rows.rw[t.cur.y].size) {
+					if (t.cur.y < rows.rownum - 1) {
+						t.cur.y++;
+						t.cur.x = 0;
+					}
+				} else 
+					t.cur.x++;
+			break;
+			
+		case (KEY_UP):
+			if (t.cur.y) {
+				t.cur.y--;
+				if (t.cur.x > rows.rw[t.cur.y].size)
+					t.cur.x = rows.rw[t.cur.y].size;
+			}
+			break;
+
+		case (KEY_DOWN):
+			if (t.cur.y < rows.rownum - 1) {
+				t.cur.y++;
+				if (t.cur.x > rows.rw[t.cur.y].size)
+					t.cur.x = rows.rw[t.cur.y].size;
+			}
+			break;
+	}
+}
+
+void curUpdateRender ()
+{
+	// y
+	if (t.cur.y >= t.cur.off_y && t.cur.y < t.cur.off_y + t.dim.y) {
+		t.cur.r_y = t.cur.y - t.cur.off_y;
+
+	} else if (t.cur.y >= t.cur.off_y + t.dim.y) {
+		if (t.cur.y == t.cur.off_y + t.dim.y) t.cur.off_y++;
+		else t.cur.off_y += t.cur.y - (t.cur.off_y + t.dim.y);
+		t.cur.r_y = t.dim.y - 1;
+	
+	} else if (t.cur.y < t.cur.off_y) {
+		t.cur.off_y -= t.cur.off_y - t.cur.y;
+		t.cur.r_y = 0;
+	}
+
+	// x
+	static int i;
+	for (i = 0, t.cur.r_x = 0; i < t.cur.x; i++) {
+		if (rows.rw[t.cur.y].chars[i] == '\t') t.cur.r_x += (TABSIZE - 1) - (t.cur.r_x % TABSIZE);
+		t.cur.r_x++;
+	}
+
+	if (t.cur.r_x >= t.cur.off_x && t.cur.r_x < t.dim.x) {
+		//ok
+	} else if (t.cur.r_x < t.cur.off_x) {
+		t.cur.off_x -= t.cur.off_x - t.cur.r_x;
+		t.cur.r_x = 0;
+	
+	} else if (t.cur.r_x >= t.cur.off_x + t.dim.x) {
+		t.cur.off_x += t.cur.r_x - t.cur.off_x - t.dim.x;
+		t.cur.r_x = t.dim.x - 1;
+	}
+}
 /*--------------------------------- testing ------------------------------------*/
