@@ -2,11 +2,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <locale.h>
 
 /* defines */
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
 #define TABSIZE 4 // Tab size as used in render
 #define STAT_SIZE 128
+#define _XOPEN_SOURCE_EXTENDED
 
 /* main data structure containing:
  *	-cursor position
@@ -90,6 +92,9 @@ static void handleDel (int select);
 /* testing */
 static void updateInfo (void);
 static int whatsThat (void);
+static inline int isUtf (int c);
+static inline int isCont (int c);
+static inline int isStart (int c);
 
 /* --------------------------------- main ------------------------------------ */
 int main (int argc, char *argv[])
@@ -166,6 +171,9 @@ int main (int argc, char *argv[])
 
 void termInit (void)
 {
+	/* Init locales */
+	setlocale(LC_ALL, "");
+	
 	/* Init the screen and refresh */
 	initscr();
 	refresh();
@@ -263,7 +271,7 @@ void drawLines (void)
 		/* Draw the line matcing render memory */
 		if (&rows.rw[ln] == NULL) termDie("drawlines NULL");
 		if (rows.rw[ln].r_size > t.cur.off_x) {
-			addnstr(&rows.rw[ln].render[t.cur.off_x], t.dim.x + 1);
+			addnstr(&rows.rw[ln].render[t.cur.off_x], t.dim.x + 1); // good for utf-8
 		}
 		
 		lnMove(i + 1, 0);
@@ -558,7 +566,11 @@ void cursorMove (int a)
 					t.cur.y--;
 					t.cur.x = rows.rw[t.cur.y].size;
 				}
-			} else
+			} else if (isCont(rows.rw[t.cur.y].chars[t.cur.x - 1])) {
+				do {
+					t.cur.x--;
+				} while(!isStart(rows.rw[t.cur.y].chars[t.cur.x]));
+			} else 
 				t.cur.x--;
 			break;
 			
@@ -568,6 +580,10 @@ void cursorMove (int a)
 						t.cur.y++;
 						t.cur.x = 0;
 					}
+				} else if (isStart(rows.rw[t.cur.y].chars[t.cur.x])) {
+					do {
+						t.cur.x++;
+					} while(isCont(rows.rw[t.cur.y].chars[t.cur.x]));
 				} else 
 					t.cur.x++;
 			break;
@@ -607,9 +623,16 @@ void curUpdateRender ()
 	}
 
 	// x
-	static int i;
-	for (i = 0, t.cur.r_x = 0; i < t.cur.x; i++) {
-		if (rows.rw[t.cur.y].chars[i] == '\t') t.cur.r_x += (TABSIZE - 1) - (t.cur.r_x % TABSIZE);
+	static int i, c;
+	for (c = i = 0, t.cur.r_x = 0; i < t.cur.x; i++) {
+		c = rows.rw[t.cur.y].chars[i];
+		
+		/* continue (skip increment) if you encounter a continuation char */
+		if (isCont(c)) continue;
+		else if (isStart(c)) t.cur.r_x++;
+
+		if (c == '\t') t.cur.r_x += (TABSIZE - 1) - (t.cur.r_x % TABSIZE);
+
 		t.cur.r_x++;
 	}
 
@@ -678,4 +701,15 @@ void updateInfo (void)
 	t.dim.x -= t.pad + 1;
 }
 
+int isUtf (int c) {
+	return (c >= 0x80 || c < 0 ? 1 : 0);
+}
+
+int isCont (int c) {
+	return ((c &= 0xC0) == 0x80 ? 1 : 0);
+}
+
+int isStart (int c) {
+	return (isUtf(c) && !isCont(c) ? 1 : 0);
+}
 /*--------------------------------- testing ------------------------------------*/

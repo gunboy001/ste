@@ -1,0 +1,383 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"ca",
+				"cambiaCapienza"
+			],
+			[
+				"in",
+				"inserisci"
+			],
+			[
+				"co",
+				"contenitore"
+			],
+			[
+				"off",
+				"off_x"
+			],
+			[
+				"con",
+				"contenitore"
+			],
+			[
+				"update",
+				"updateOffset"
+			],
+			[
+				"rowDel",
+				"rowDeleteRow"
+			],
+			[
+				"rowAdd",
+				"rowAddString"
+			],
+			[
+				"rowadd",
+				"rowAddRow"
+			],
+			[
+				"row",
+				"rowCpy"
+			],
+			[
+				"ge",
+				"getLineNumberSize"
+			],
+			[
+				"cur",
+				"cur_y"
+			],
+			[
+				"mem",
+				"memcpy"
+			]
+		]
+	},
+	"buffers":
+	[
+	],
+	"build_system": "Packages/C++/C++ Single File.sublime-build",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"vme",
+				"View: Toggle Menu"
+			],
+			[
+				"vmen",
+				"View: Toggle Menu"
+			],
+			[
+				"build",
+				"Build: New Build System"
+			],
+			[
+				"vm",
+				"View: Toggle Menu"
+			],
+			[
+				"insta",
+				"Package Control: Install Package"
+			],
+			[
+				"mark",
+				"Set Syntax: Markdown"
+			],
+			[
+				"wor",
+				"Word Wrap: Toggle"
+			],
+			[
+				"wra",
+				"Word Wrap: Toggle"
+			],
+			[
+				"side",
+				"View: Toggle Side Bar"
+			],
+			[
+				"git comi",
+				"Git: Commit"
+			],
+			[
+				"git add",
+				"Git: Add All"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"inst\t",
+				"Package Control: Install Package"
+			],
+			[
+				"color",
+				"UI: Select Color Scheme"
+			],
+			[
+				"theme",
+				"UI: Select Theme"
+			],
+			[
+				"install\t",
+				"Package Control: Install Package"
+			],
+			[
+				"close",
+				"File: Close All"
+			],
+			[
+				"menu",
+				"View: Toggle Menu"
+			],
+			[
+				"open",
+				"View: Toggle Open Files in Side Bar"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 151.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"file_history":
+	[
+		"/home/ale/Documents/programmi/base/3h1/main.cpp",
+		"/home/ale/Documents/gits/projects/ste/README.md",
+		"/home/ale/Documents/gits/projects/ste/Makefile",
+		"/home/ale/Documents/gits/projects/ste/ste.c",
+		"/home/ale/.config/sublime-text-3/Packages/User/plain-g++.sublime-build",
+		"/home/ale/Documents/gits/projects/ste/row.c",
+		"/home/ale/.config/sublime-merge/Packages/User/Preferences.sublime-settings",
+		"/home/ale/pp",
+		"/home/ale/Documents/gits/projects/Lists/void-install.txt",
+		"/home/ale/Documents/gits/projects/ste/hello",
+		"/home/ale/.config/sublime-text-3/Packages/Default/Default (Linux).sublime-keymap",
+		"/home/ale/.config/sublime-text-3/Packages/User/Default (Linux).sublime-keymap",
+		"/home/ale/plan9.txt"
+	],
+	"find":
+	{
+		"height": 26.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"fileopen",
+			"realloc",
+			"//",
+			"t.cur.off_y",
+			"t.cur.yy",
+			"unsigned ",
+			"t.cur.off_y",
+			"t.cur.yy",
+			"init",
+			"t.cur.yy",
+			"t.cur.off_y",
+			"t.cur.yy",
+			"rowAddrow",
+			"off_x",
+			"t.cur.xx",
+			"xx",
+			"off_x",
+			"drawlines",
+			"drawline",
+			"currea",
+			"t.dim.x",
+			"t.cur.yy",
+			"t.cur.xx",
+			"row ope",
+			"rowdeletechar",
+			"rowaddchar",
+			"t.cur.xx",
+			"rowaddcha",
+			"rowaddstri",
+			"statusbar",
+			"updateinfo",
+			"terminit",
+			"rowinit",
+			"termInit",
+			"realloc",
+			"malloc",
+			"delta",
+			"rownum",
+			"t.cur.off_y",
+			"drawlines",
+			"NULL",
+			"rowaddlast",
+			"realloc",
+			"addstr",
+			"mvaddstr",
+			"waddstr",
+			"drawlines",
+			"realloc",
+			"decimalS",
+			"getLineNu",
+			"drawba",
+			"t.cur.x + t.cur.off_x",
+			"cur_x",
+			"t.cur.x + t.cur.off_x",
+			"t.cur.yy",
+			"t.cur.y + t.cur.off_y",
+			"r_x",
+			"filesave",
+			"bufferF",
+			"malloc",
+			"rowAddLast",
+			"pos",
+			"rowAdd",
+			"t.dim.y -= 1",
+			"updateInfo",
+			"getyx",
+			"rowadd",
+			"realloc",
+			"reallo",
+			"rownum",
+			"drawba",
+			"realloc"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"",
+			"t.cur.y",
+			"pos",
+			"t.cur.xx",
+			"t.cur.yy",
+			"rows.rownum"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"sheets":
+			[
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 26.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "Packages/Makefile/Make.sublime-build",
+	"project": "ste.sublime-project",
+	"replace":
+	{
+		"height": 48.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 110.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
