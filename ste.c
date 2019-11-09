@@ -438,37 +438,28 @@ void rowAddChar (row *rw, char c, int pos) // WIP
 
 void rowDeleteChar (row *rw, int select, int pos) // WIP
 {
-	char *s = rw->chars;
 	//Do not delete NULL char
-	if (s[pos - 1] == '\0' && pos) return;
+	if (rw->chars[pos - 1] == '\0' && pos) return;
 	if (!pos && !select) return;
-	if (s[pos] == '\0' && select) return;
-
-	rw->chars = malloc(rw->size);
-	if (rw->chars == NULL) termDie("malloc in rowDeleteChar");
-	rw->size--;
+	if (rw->chars[pos] == '\0' && select) return;
 
 	// Backspace
 	if (!select) {
-		for (int i = 0; i < pos - 1; i++)
-			rw->chars[i] = s[i];
-	
 		for (int i = pos; i < rw->size + 1; i++)
-			rw->chars[i - 1] = s[i];
+			rw->chars[i - 1] = rw->chars[i];
 
 		t.cur.x--;
 	// Delete			
 	} else {
-		if(pos) {
-			for (int i = 0; i < pos; i++)
-				rw->chars[i] = s[i];
-		}
-	
+		
 		for (int i = pos; i < rw->size + 1; i++)
-			rw->chars[i] = s[i + 1];
+			rw->chars[i] = rw->chars[i + 1];
 	}
 	
-	free(s);
+	char *s = realloc(rw->chars, rw->size);
+	if (s != NULL) rw->chars = s;
+	rw->size--;
+	
 	updateRender(rw);
 }
 
