@@ -9,6 +9,7 @@
 #define TABSIZE 4 // Tab size as used in render
 #define STAT_SIZE 128
 #define _XOPEN_SOURCE_EXTENDED
+#define EROW {0, NULL, 0, 0, NULL}
 
 /* main data structure containing:
  *	-cursor position
@@ -39,11 +40,13 @@ struct term {
 /* Row structure, defines actual and
  * render chars, actual and render size
  * and difference between render and
- * real size of the row */
+ * real size of the row 
+ * Utf-8 continuation chars */
 typedef struct row {
 	int size;
 	char *chars;
 	int r_size;
+	int utf;
 	char *render;
 } row;
 
@@ -255,8 +258,8 @@ void drawScreen ()
 /* Draw all the appropriate lines (following cursor) to the screen */
 void drawLines (void)
 {
-	static int ln, i;
-	/* move to the beginning of the screen */
+	register int ln, i;
+	static int start;
 
 	for (i = 0, ln = 0; i < t.dim.y + t.cur.off_y; i++) {
 		ln = i + t.cur.off_y;
@@ -271,7 +274,9 @@ void drawLines (void)
 		/* Draw the line matcing render memory */
 		if (&rows.rw[ln] == NULL) termDie("drawlines NULL");
 		if (rows.rw[ln].r_size > t.cur.off_x) {
-			addnstr(&rows.rw[ln].render[t.cur.off_x], t.dim.x + 1); // good for utf-8
+			start = t.cur.off_x;
+			while (isCont(rows.rw[ln].render[start])) start++; 
+			addnstr(&rows.rw[ln].render[start], t.dim.x + 1 + rows.rw[ln].utf / 4);
 		}
 		
 		lnMove(i + 1, 0);
@@ -311,10 +316,13 @@ void drawBar (char *s)
 
 void updateRender (row *rw)
 {
-	/* count the special characters (only tabs for now) */
-	static int tabs = 0, i, off;
-	for (i = 0, tabs = 0; i < rw->size; i++) {
+	/* count the special characters
+	 * spaces, utf-8 continuation chars */
+	static int tabs, i, off, cc, ut;
+	for (i = 0, tabs = 0, cc = 0, ut = 0; i < rw->size; i++) {
 		if (rw->chars[i] == '\t') tabs++;
+		else if (isCont(rw->chars[i])) cc++;
+		else if (isUtf(rw->chars[i])) ut++;
 	}
 	rw->render = NULL;
 	free(rw->render);
@@ -332,13 +340,14 @@ void updateRender (row *rw)
 				//if (!j) rw->render[off++] = '|'; 
 				//else rw->render[off++] = ' ';
 				rw->render[off++] = ' ';
-			}
+			}		
 		} else {
 			rw->render[off++] = rw->chars[i];
 		}
 	}
 	rw->render[off] = '\0';
-	rw->r_size = off;
+	rw->r_size = off - cc;
+	rw->utf = cc + ut;
 }
 
 /* -------------------------------- draw operations -------------------------------- */
@@ -465,62 +474,71 @@ void rowDeleteChar (row *rw, int select, int pos) // WIP
 
 void rowAddRow (int pos) // WIP; TO DOCUMENT
 {
-	char *s = NULL;
-	// Move away other lines
-	//copy old last line to new space
+	/* 	MOVE THE ROWS AWAY */
+	/* add another line to the bottom containing the previous
+	 * (last) line, effectively making new space */
 	rowAddLast(rows.rw[rows.rownum - 1].chars, rows.rw[rows.rownum - 1].size);
 
-	for (int last = rows.rownum - 1; last > pos; last--) {
+	/* copy all other lines until the specified position to the next one */
+	for (int last = rows.rownum - 1; last > pos; last--)
 		rowCpy(&rows.rw[last], &rows.rw[last - 1]);
-	}
 
-	//copy previous row
-	int l = rows.rw[pos].size - t.cur.x;
-	s = malloc(l + 1);
+	/* SPLIT THE ROW AT POS AND STORE IT */
+	/* Get the row length at position after the cursor */
+	int len = rows.rw[pos].size - t.cur.x;
+	/* create a dummy row as the new row souce */
+	row nex = EROW;
+	/* allocate a buffer */
+	char *s = malloc(len + 1);
 	if (s == NULL) termDie("malloc in rowAddRow s");
-	memcpy(s, &rows.rw[pos].chars[t.cur.x], l);
-	s[l] = '\0';
-	// Delete prev row until cursor
-	char *p = malloc(t.cur.x + 1);
-	if (p == NULL) termDie("malloc in rowAddRow p");
-	memcpy(p, rows.rw[pos].chars, t.cur.x);
-	p[t.cur.x] = '\0';
-	rowFree(&rows.rw[pos]);
-	rows.rw[pos].chars = malloc(t.cur.x + 1);
-	if (rows.rw[pos].chars == NULL) termDie("malloc in rowAddRow chars until cursor");
-	memcpy(rows.rw[pos].chars, p, t.cur.x + 1);
-	free(p);
+	/* copy the contents of the pos row after the cursor into the buffer */
+	memcpy(s, &rows.rw[pos].chars[t.cur.x], len);
+	s[len] = '\0';
+	/* update the dummy row */
+	nex.chars = s;
+	nex.size = strlen(s);
+	
+	/* MAKE THE SPLIT INTO TWO LINES */
+	/* shrink the line at pos */
+	char *p = realloc(rows.rw[pos].chars, t.cur.x + 1);
+	if (p == NULL) termDie("realloc in rowAddRow");
+	rows.rw[pos].chars = p;
+	/* and terminate it with null like a good boi */
+	rows.rw[pos].chars[t.cur.x] = '\0';
+	/* update info and render */
 	rows.rw[pos].size = t.cur.x;
 	updateRender(&rows.rw[pos]);
 
-	if (pos != rows.rownum - 1) {
-		rowFree(&rows.rw[pos + 1]);
-		rows.rw[pos + 1].chars = malloc(strlen(s) + 1);
-		if (rows.rw[pos + 1].chars == NULL) termDie("malloc in rowAddRow chars next row");
-		memcpy(rows.rw[pos + 1].chars, s, strlen(s) + 1);
-		rows.rw[pos + 1].size = strlen(s);
-		updateRender(&rows.rw[pos + 1]);
-	} else rowAddLast(s, l);
+	/* copy the dummy to the new line and free */
+	rowCpy(&rows.rw[pos + 1], &nex);
+	rowFree(&nex);
 
-	free(s);
 }
 
 void rowFree (row *rw) // WIP
 {
+	/* Free both render and memory strings */
 	free(rw->render);
 	free(rw->chars);
+	/* clear sizes */
 	rw->size = 0;
 	rw->r_size = 0;
+	rw->utf = 0;
 }
 
 void rowCpy (row *to, row *from) // WIP
-{ 
+{
+	/* Free the destination row (without destroying it) */
 	rowFree(to);
+	/* Allocate space for the new string */
 	to->chars = (char*) malloc(strlen(from->chars) + 1);
 	if (to->chars == NULL) termDie("malloc in rowCpy");
+	/* And update the size */
 	to->size = from->size;
+	/* Then copy the chars from the source row to the destination row */
 	memcpy(to->chars, from->chars, to->size);
 	to->chars[to->size] = '\0';
+	/* Then update the render */
 	updateRender(to);
 }
 
@@ -631,20 +649,20 @@ void curUpdateRender ()
 		if (isCont(c)) continue;
 		else if (isStart(c)) t.cur.r_x++;
 
-		if (c == '\t') t.cur.r_x += (TABSIZE - 1) - (t.cur.r_x % TABSIZE);
+		if (c == '\t') t.cur.r_x += (TABSIZE - 1);
 
 		t.cur.r_x++;
 	}
 
-	if (t.cur.r_x >= t.cur.off_x && t.cur.r_x < t.dim.x) {
-		//ok
+	if (t.cur.r_x >= t.cur.off_x && t.cur.r_x < t.cur.off_x + t.dim.x) {
+		t.cur.r_x -= t.cur.off_x;
+
 	} else if (t.cur.r_x < t.cur.off_x) {
 		t.cur.off_x -= t.cur.off_x - t.cur.r_x;
 		t.cur.r_x = 0;
 	
-	} else if (t.cur.r_x > t.cur.off_x + t.dim.x) {
-		if (t.cur.r_x == t.cur.off_x + t.dim.x) t.cur.off_x++;
-		else t.cur.off_x += t.cur.r_x - t.cur.off_x - t.dim.x;
+	} else if (t.cur.r_x >= t.cur.off_x + t.dim.x) {
+		t.cur.off_x += t.cur.r_x - t.cur.off_x - t.dim.x;
 		t.cur.r_x = t.dim.x;
 	}
 }
