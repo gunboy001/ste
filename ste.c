@@ -75,7 +75,7 @@ static void rowDeleteChar (row *rw, int select, int pos);
 static void rowCpy (row *to, row *from);
 static void rowAddRow (int pos);
 static void rowFree (row *rw);
-static void rowAddString (row *rw, char *s, int len, int pos);
+static void rowAppendString (row *rw, char *s, int len);
 static void rowDeleteRow (int pos);
 
 /* Terminal operations */
@@ -160,6 +160,8 @@ int main (int argc, char *argv[])
 			default:
 				if (c == KEY_STAB) c = '\t';
 				rowAddChar(&rows.rw[t.cur.y], c, t.cur.x);
+				t.cur.x++;
+				break;
 		}
 		if (decimalSize(rows.rownum) - irow) updateInfo();
 	}
@@ -404,52 +406,40 @@ void rowInit (void)
 	rows.rownum = 0;
 }
 
-void rowAddChar (row *rw, char c, int pos) // WIP
+void rowAddChar (row *rw, char c, int pos)
 {
-	// Error checking (allow tab)
+	/* Check if char is valid */
 	if (!c || (iscntrl(c) && c != '\t')) return;
 	
-	int i = 0;
-	char *s = rw->chars;
-
-	// reallocate mem and inc size
-	rw->chars = malloc(rw->size + 2);
-	if (rw->chars == NULL) termDie("malloc in rowAddchar");
+	/* extend the string */
 	rw->size++;
+	char *t = realloc(rw->chars, rw->size + 1);
+	if (t == NULL) termDie("realloc in rowAddchar");
+	rw->chars = t;
 
-	// copy bf cursor
-	for (i = 0; i < pos; i++) {
-		rw->chars[i] = s[i];
-	}
+	/* make space for the new char */
+	memcpy(&rw->chars[pos + 1], &rw->chars[pos], (rw->size + 1) - (pos + 1));
 
-	// add at cursor
-	rw->chars[pos++] = c;
-
-	//copy after cursor 
-	for (i = pos; i < rw->size + 1; i++) {
-			rw->chars[i] = s[i - 1];
-	}
-	
-	free(s);
+	/* add the new char */
+	rw->chars[pos] = c;
 
 	updateRender(rw);
-	t.cur.x++;
 }
 
 void rowDeleteChar (row *rw, int select, int pos) // WIP
 {
-	//Do not delete NULL char
+	/* Check if the character is valid */
 	if (rw->chars[pos - 1] == '\0' && pos) return;
 	if (!pos && !select) return;
 	if (rw->chars[pos] == '\0' && select) return;
 
-	// Backspace
+	/* delete char before the position */
 	if (!select) {
 		for (int i = pos; i < rw->size + 1; i++)
 			rw->chars[i - 1] = rw->chars[i];
 
 		t.cur.x--;
-	// Delete			
+	/* delete char at position */			
 	} else {
 		
 		for (int i = pos; i < rw->size + 1; i++)
@@ -533,21 +523,17 @@ void rowCpy (row *to, row *from) // WIP
 	updateRender(to);
 }
 
-void rowAddString (row *rw, char *s, int len, int pos)
+void rowAppendString (row *rw, char *s, int len)
 {
+	/* reallocate the row to accomodate for the added string */
 	char *temp = realloc(rw->chars, rw->size + len + 1);
-	if (temp == NULL) termDie("realloc in rowAddString");
+	if (temp == NULL) termDie("realloc in rowAppendString");
 	rw->chars = temp;
-	if (pos == -1 || pos == rw->size) {
-		memcpy(&rw->chars[rw->size], s, len);
-		rw->size += len;
-		rw->chars[rw->size] = '\0';
-	} else {
-		memcpy(&rw->chars[rw->size], &rw->chars[rw->size - len], len);
-		memcpy(&rw->chars[rw->size - len], s, len);
-		rw->size += len;
-		rw->chars[rw->size] = '\0';
-	}
+
+	memcpy(&rw->chars[rw->size], s, len);
+	rw->size += len;
+	rw->chars[rw->size] = '\0';
+	
 	updateRender(rw);
 }
 
@@ -617,7 +603,40 @@ void cursorMove (int a)
 
 void curUpdateRender ()
 {
-	// y
+	/*
+	      Whole file (memory)
+	 _____________________________
+	|(0, 0)                       |
+	|                             |
+	|            off_y            |
+	|      +--------------+       |
+	|      |              |       |
+	|      |              |       |
+	|      |              | off_x |
+	| off_x|              |   +   |
+	|      |              | dim_x |
+	|      |              |       |
+	|      |              |       |
+	|      |              |       |
+	|      +--------------+       |
+	|        off_y + dim.y        |
+	|                             |
+	|                             |
+	|                             |
+	|_____________________________| rows.rownum
+
+	The inner sqaure represents the render area
+	and it is delimited by:
+		left: x -> t.cur.off_x
+		right: x -> t.cur.off_x + (t.dim.x - 1)
+		upper: y -> t.cur.off_y
+		lower: y -> t.cur.off_y + (t.dim.y - 1)
+	The rows are drawn top to botom, starting 
+	from the left most char of the render area
+	until row end or when the characters hit
+	the right bound.
+	*/
+
 	if (t.cur.y >= t.cur.off_y && t.cur.y < t.cur.off_y + t.dim.y) {
 		t.cur.r_y = t.cur.y - t.cur.off_y;
 
@@ -686,7 +705,7 @@ void handleDel (int select)
 	if (!select) {
 		if (t.cur.x <= 0 && t.cur.y > 0) {
 			t.cur.x = rows.rw[t.cur.y - 1].size;
-			rowAddString(&rows.rw[t.cur.y - 1], rows.rw[t.cur.y].chars, rows.rw[t.cur.y].size, -1);
+			rowAppendString(&rows.rw[t.cur.y - 1], rows.rw[t.cur.y].chars, rows.rw[t.cur.y].size);
 			rowDeleteRow(t.cur.y);
 			t.cur.y--;
 		} else {
@@ -694,7 +713,7 @@ void handleDel (int select)
 		}
 	} else {
 		if (t.cur.x >= rows.rw[t.cur.y].size) {
-			rowAddString(&rows.rw[t.cur.y], rows.rw[t.cur.y + 1].chars, rows.rw[t.cur.y + 1].size, -1);
+			rowAppendString(&rows.rw[t.cur.y], rows.rw[t.cur.y + 1].chars, rows.rw[t.cur.y + 1].size);
 			rowDeleteRow(t.cur.y + 1);
 		} else {
 			rowDeleteChar(&rows.rw[t.cur.y], 1, t.cur.x);
@@ -710,6 +729,7 @@ void updateInfo (void)
 	t.dim.x -= t.pad + 1;
 }
 
+/* Check for utf-8 char type */
 int isUtf (int c) {
 	return (c >= 0x80 || c < 0 ? 1 : 0);
 }
