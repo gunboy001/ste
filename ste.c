@@ -8,7 +8,7 @@
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
 #define TABSIZE 4 // Tab size as used in render
 #define STAT_SIZE 128
-#define _XOPEN_SOURCE_EXTENDED
+#define _XOPEN_SOURCE_EXTENDED 1
 #define EROW {0, NULL, 0, 0, NULL}
 
 /* main data structure containing:
@@ -71,7 +71,7 @@ static inline void lnMove (int y, int x);
 /* Row operations */
 static inline void rowInit (void);
 static void rowAddChar (row *rw, char c, int pos);
-static void rowDeleteChar (row *rw, int select, int pos);
+static int rowDeleteChar (row *rw, int select, int pos);
 static void rowCpy (row *to, row *from);
 static void rowAddRow (int pos);
 static void rowFree (row *rw);
@@ -124,8 +124,9 @@ int main (int argc, char *argv[])
 	/* Main event loop */
 	int c;
 	while (1) {
-	/* Redraw the screen */
-	drawScreen();
+		updateInfo();
+		/* Redraw the screen */
+		drawScreen();
 
 		/* Wait for an event (keypress) */
 		switch (c = getch()) {
@@ -260,8 +261,8 @@ void drawScreen ()
 /* Draw all the appropriate lines (following cursor) to the screen */
 void drawLines (void)
 {
-	register int ln, i;
-	static int start;
+	register short ln, i;
+	register int start;
 
 	for (i = 0, ln = 0; i < t.dim.y + t.cur.off_y; i++) {
 		ln = i + t.cur.off_y;
@@ -278,7 +279,7 @@ void drawLines (void)
 		if (rows.rw[ln].r_size > t.cur.off_x) {
 			start = t.cur.off_x;
 			while (isCont(rows.rw[ln].render[start])) start++; 
-			addnstr(&rows.rw[ln].render[start], t.dim.x + 1 + rows.rw[ln].utf / 4);
+			addnstr(&rows.rw[ln].render[start], (t.dim.x + 1) + (rows.rw[ln].utf >> 2));
 		}
 		
 		lnMove(i + 1, 0);
@@ -426,31 +427,23 @@ void rowAddChar (row *rw, char c, int pos)
 	updateRender(rw);
 }
 
-void rowDeleteChar (row *rw, int select, int pos) // WIP
+int rowDeleteChar (row *rw, int select, int pos) // WIP
 {
 	/* Check if the character is valid */
-	if (rw->chars[pos - 1] == '\0' && pos) return;
-	if (!pos && !select) return;
-	if (rw->chars[pos] == '\0' && select) return;
+	if (rw->chars[pos - 1] == '\0' && pos) return 0;
+	if (!pos && !select) return 0;
+	if (rw->chars[pos] == '\0' && select) return 0;
+	//change pos based on the command
+	if (!select) pos--;
 
-	/* delete char before the position */
-	if (!select) {
-		for (int i = pos; i < rw->size + 1; i++)
-			rw->chars[i - 1] = rw->chars[i];
+	memcpy(&rw->chars[pos], &rw->chars[pos + 1], rw->size - pos);
 
-		t.cur.x--;
-	/* delete char at position */			
-	} else {
-		
-		for (int i = pos; i < rw->size + 1; i++)
-			rw->chars[i] = rw->chars[i + 1];
-	}
-	
 	char *s = realloc(rw->chars, rw->size);
 	if (s != NULL) rw->chars = s;
 	rw->size--;
-	
+
 	updateRender(rw);
+	return 1;
 }
 
 void rowAddRow (int pos) // WIP; TO DOCUMENT
@@ -539,13 +532,17 @@ void rowAppendString (row *rw, char *s, int len)
 
 void rowDeleteRow (int pos)
 {
+	if (rows.rownum == 1) return;
+	if (pos >= rows.rownum) return;
+	if (pos < 0) return;
+
 	for (; pos < rows.rownum - 1; pos++) {
 		rowCpy(&rows.rw[pos], &rows.rw[pos + 1]); // rowcpy already frees the row
 	}
 	rows.rownum--;
 	rowFree(&rows.rw[rows.rownum]);
 	row *temp = realloc(rows.rw, sizeof(row) * rows.rownum);
-	if (temp == NULL) termDie("malloc in rowDeleteRow");
+	if (temp == NULL) termDie("realloc in rowDeleteRow");
 	rows.rw = temp;
 }
 
@@ -709,14 +706,25 @@ void handleDel (int select)
 			rowDeleteRow(t.cur.y);
 			t.cur.y--;
 		} else {
-			rowDeleteChar(&rows.rw[t.cur.y], 0, t.cur.x);
+			if (isUtf(rows.rw[t.cur.y].chars[t.cur.x - 1])) {
+				do {
+					if (rowDeleteChar(&rows.rw[t.cur.y], 0, t.cur.x))
+						t.cur.x--;
+				} while (!isStart(rows.rw[t.cur.y].chars[t.cur.x - 1]));
+			}
+			if (rowDeleteChar(&rows.rw[t.cur.y], 0, t.cur.x))
+				t.cur.x--;
 		}
 	} else {
 		if (t.cur.x >= rows.rw[t.cur.y].size) {
 			rowAppendString(&rows.rw[t.cur.y], rows.rw[t.cur.y + 1].chars, rows.rw[t.cur.y + 1].size);
 			rowDeleteRow(t.cur.y + 1);
 		} else {
-			rowDeleteChar(&rows.rw[t.cur.y], 1, t.cur.x);
+			if (isStart(rows.rw[t.cur.y].chars[t.cur.x])) {
+				do {
+					rowDeleteChar(&rows.rw[t.cur.y], 1, t.cur.x);
+				} while (isCont(rows.rw[t.cur.y].chars[t.cur.x]));
+			} else rowDeleteChar(&rows.rw[t.cur.y], 1, t.cur.x);
 		}
 	}
 }
