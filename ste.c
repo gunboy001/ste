@@ -8,7 +8,8 @@
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
 #define TABSIZE 4 // Tab size as used in render
 #define STAT_SIZE 128
-#define _XOPEN_SOURCE_EXTENDED 1
+#define _XOPEN_SOURCE_EXTENDED
+#define _GNU_SOURCE
 #define EROW {0, NULL, 0, 0, NULL}
 
 /* main data structure containing:
@@ -57,6 +58,11 @@ struct {
 	int rownum;
 } rows;
 
+const char *msg[] = {
+					"Find: ",
+					"Nigger"
+					};
+
 /* Prototypes */
 /* draw operations */
 static void drawBar (char *s);
@@ -89,6 +95,7 @@ void fileSave (char *filename);
 
 /* buffer operations */
 static void rowAddLast (char *s, int len);
+static int editorFind (const char* needle, int* y, int* x);
 
 /* garbage */
 static void handleDel (int select);
@@ -157,6 +164,12 @@ int main (int argc, char *argv[])
 				break;
 			case (KEY_HOME):
 				t.cur.y = 0;
+				break;
+			case (CTRL('f')):
+				if (!editorFind("for", &t.cur.y, &t.cur.x)) {
+					t.cur.y = 0;
+					editorFind("for", &t.cur.y, &t.cur.x);
+				}
 				break;
 			default:
 				if (c == KEY_STAB) c = '\t';
@@ -266,22 +279,25 @@ void drawLines (void)
 
 	for (i = 0, ln = 0; i < t.dim.y + t.cur.off_y; i++) {
 		ln = i + t.cur.off_y;
-		if (ln >= rows.rownum) break;
-		
-		/* Draw the line number */
-		attron(COLOR_PAIR(1));
-		mvprintw(i, 0, "%d", ln + 1);
-		attroff(COLOR_PAIR(1));
-		lnMove(i, 0);
 
-		/* Draw the line matcing render memory */
-		if (&rows.rw[ln] == NULL) termDie("drawlines NULL");
-		if (rows.rw[ln].r_size > t.cur.off_x) {
-			start = t.cur.off_x;
-			while (isCont(rows.rw[ln].render[start])) start++; 
-			addnstr(&rows.rw[ln].render[start], (t.dim.x + 1) + (rows.rw[ln].utf >> 2));
+		/* vi style tildes */
+		if (ln >= rows.rownum) {
+			mvaddch(i, 0, '~');
+		} else {
+			/* Draw the line number */
+			attron(COLOR_PAIR(1));
+			mvprintw(i, 0, "%d", ln + 1);
+			attroff(COLOR_PAIR(1));
+			lnMove(i, 0);
+
+			/* Draw the line matcing render memory */
+			if (&rows.rw[ln] == NULL) termDie("drawlines NULL");
+			if (rows.rw[ln].r_size > t.cur.off_x) {
+				start = t.cur.off_x;
+				while (isCont(rows.rw[ln].render[start])) start++; 
+				addnstr(&rows.rw[ln].render[start], (t.dim.x + 1) + (rows.rw[ln].utf >> 2));
+			}
 		}
-		
 		lnMove(i + 1, 0);
 	}
 	lnMove(t.cur.y, t.cur.x);
@@ -639,7 +655,7 @@ void curUpdateRender ()
 
 	} else if (t.cur.y >= t.cur.off_y + t.dim.y) {
 		if (t.cur.y == t.cur.off_y + t.dim.y) t.cur.off_y++;
-		else t.cur.off_y += t.cur.y - (t.cur.off_y + t.dim.y);
+		else t.cur.off_y += t.cur.y - (t.cur.off_y + t.dim.y) + 1;
 		t.cur.r_y = t.dim.y - 1;
 	
 	} else if (t.cur.y < t.cur.off_y) {
@@ -669,7 +685,7 @@ void curUpdateRender ()
 		t.cur.r_x = 0;
 	
 	} else if (t.cur.r_x >= t.cur.off_x + t.dim.x) {
-		t.cur.off_x += t.cur.r_x - t.cur.off_x - t.dim.x;
+		t.cur.off_x += t.cur.r_x - (t.cur.off_x + t.dim.x);
 		t.cur.r_x = t.dim.x;
 	}
 }
@@ -748,5 +764,23 @@ int isCont (int c) {
 
 int isStart (int c) {
 	return (isUtf(c) && !isCont(c) ? 1 : 0);
+}
+
+int editorFind (const char* needle, int* y, int* x)
+{
+	char *res = NULL;
+	int i, c;
+
+	for (i = *y + 1; i < rows.rownum; i++) {
+			res = strstr(rows.rw[i].chars, needle);
+			if (res != NULL) break;
+	}
+	if (res == NULL) return 0;
+
+	*y = c = i;
+	for (i = 0; i <= rows.rw[c].size; i++)
+		if (&rows.rw[c].chars[i] == res) break;
+	*x = i;
+	return 1;
 }
 /*--------------------------------- testing ------------------------------------*/
