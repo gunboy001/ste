@@ -126,7 +126,7 @@ int main (int argc, char *argv[])
 	snprintf(t.statusbar, STAT_SIZE, "%s %d lines %dx%d", argv[1], rows.rownum, t.dim.y, t.dim.x);
 
 	/* remember the initial row number */
-	int irow = decimalSize(rows.rownum);
+//	int irow = decimalSize(rows.rownum);
 
 	/* Main event loop */
 	int c;
@@ -140,18 +140,22 @@ int main (int argc, char *argv[])
 			case (CTRL('q')):
 				termExit();
 				break;
+
 			case (KEY_LEFT):
 			case (KEY_RIGHT):
 			case (KEY_UP):
 			case (KEY_DOWN):
 				cursorMove(c);
 				break;
+
 			case (KEY_BACKSPACE):
 				handleDel(0);
 				break;
+
 			case (KEY_DC):
 				handleDel(1);
 				break;
+
 			case (KEY_ENTER):
 			case (10):
 			case ('\r'):
@@ -159,25 +163,29 @@ int main (int argc, char *argv[])
 				t.cur.y++;
 				t.cur.x = 0;
 				break;
+
 			case (KEY_END):
 				t.cur.y = rows.rownum - 1;
 				break;
+
 			case (KEY_HOME):
 				t.cur.y = 0;
 				break;
+
 			case (CTRL('f')):
 				if (!editorFind("for", &t.cur.y, &t.cur.x)) {
 					t.cur.y = 0;
 					editorFind("for", &t.cur.y, &t.cur.x);
 				}
 				break;
+
 			default:
 				if (c == KEY_STAB) c = '\t';
 				rowAddChar(&rows.rw[t.cur.y], c, t.cur.x);
 				t.cur.x++;
 				break;
 		}
-		if (decimalSize(rows.rownum) - irow) updateInfo();
+		//if (decimalSize(rows.rownum) - irow) updateInfo();
 	}
 
 	/* If by chance i find myself here be sure
@@ -649,6 +657,10 @@ void curUpdateRender ()
 	until row end or when the characters hit
 	the right bound.
 	*/
+
+	/* Adjust x and y if they are out of bounds */
+	if (t.cur.y < 0 || t.cur.y >= rows.rownum) t.cur.y = 0;
+	if (t.cur.x < 0) t.cur.x = 0;
 
 	if (t.cur.y >= t.cur.off_y && t.cur.y < t.cur.off_y + t.dim.y) {
 		t.cur.r_y = t.cur.y - t.cur.off_y;
