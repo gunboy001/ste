@@ -296,6 +296,7 @@ void drawLines (void)
 			/* Draw the line number */
 			attron(COLOR_PAIR(1));
 			mvprintw(i, 0, "%d", ln + 1);
+			mvaddch(i, t.pad - 1, ACS_VLINE);
 			attroff(COLOR_PAIR(1));
 			lnMove(i, 0);
 
