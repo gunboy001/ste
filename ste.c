@@ -4,13 +4,13 @@
 #include <ctype.h>
 #include <locale.h>
 
+#include "fbuffer.h"
+
 /* defines */
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
-#define TABSIZE 4 // Tab size as used in render
 #define STAT_SIZE 128
 #define _XOPEN_SOURCE_EXTENDED
 #define _GNU_SOURCE
-#define EROW {0, NULL, 0, 0, NULL}
 
 /* main data structure containing:
  *	-cursor position
@@ -38,25 +38,7 @@ struct term {
 	int pad;
 } t;
 
-/* Row structure, defines actual and
- * render chars, actual and render size
- * and difference between render and
- * real size of the row 
- * Utf-8 continuation chars */
-typedef struct row {
-	int size;
-	char *chars;
-	int r_size;
-	int utf;
-	char *render;
-} row;
-
-/* Rows structure (or file buffer)
- * defines rows and teh number of rows */
-struct {
-	row *rw;
-	int rownum;
-} rows;
+buf rows;
 
 const char *msg[] = {
 					"Find: ",
@@ -68,21 +50,10 @@ const char *msg[] = {
 static void drawBar (char *s);
 static void drawScreen ();
 static void drawLines (void);
-static void updateRender (row *rw);
 static void curUpdateRender (void);
 static void cursorMove(int a);
 static int decimalSize (int n);
 static inline void lnMove (int y, int x);
-
-/* Row operations */
-static inline void rowInit (void);
-static void rowAddChar (row *rw, char c, int pos);
-static int rowDeleteChar (row *rw, int select, int pos);
-static void rowCpy (row *to, row *from);
-static void rowAddRow (int pos);
-static void rowFree (row *rw);
-static void rowAppendString (row *rw, char *s, int len);
-static void rowDeleteRow (int pos);
 
 /* Terminal operations */
 static void termInit (void);
@@ -94,7 +65,6 @@ static void fileOpen (char *filename);
 void fileSave (char *filename);
 
 /* buffer operations */
-static void rowAddLast (char *s, int len);
 static int editorFind (const char* needle, int* y, int* x);
 
 /* garbage */
@@ -102,15 +72,12 @@ static void handleDel (int select);
 /* testing */
 static void updateInfo (void);
 static int whatsThat (void);
-static inline int isUtf (int c);
-static inline int isCont (int c);
-static inline int isStart (int c);
 
 /* --------------------------------- main ------------------------------------ */
 int main (int argc, char *argv[])
 {
 	/* Initialize the first row */
-	rowInit();
+	bufInit(&rows);
 
 	/* Try to open the file */
 	if (argc < 2) {
@@ -159,7 +126,7 @@ int main (int argc, char *argv[])
 			case (KEY_ENTER):
 			case (10):
 			case ('\r'):
-				rowAddRow(t.cur.y);
+				rowAddRow(&rows, t.cur.y, t.cur.x);
 				t.cur.y++;
 				t.cur.x = 0;
 				break;
@@ -341,44 +308,6 @@ void drawBar (char *s)
 	attroff(COLOR_PAIR(2));
 }
 
-
-
-void updateRender (row *rw)
-{
-	/* count the special characters
-	 * spaces, utf-8 continuation chars */
-	static int tabs, i, off, cc, ut;
-	for (i = 0, tabs = 0, cc = 0, ut = 0; i < rw->size; i++) {
-		if (rw->chars[i] == '\t') tabs++;
-		else if (isCont(rw->chars[i])) cc++;
-		else if (isUtf(rw->chars[i])) ut++;
-	}
-	rw->render = NULL;
-	free(rw->render);
-
-	/* Render is long as size with the added tab spaces - 1
-	 * (we already count for the \t as a char) */
-	rw->render = malloc(rw->size + tabs * (TABSIZE - 1) + 1);
-	if (rw->render == NULL) termDie ("malloc in updateRender");
-
-	/* put all the characters (substituing all special chars)
-	 * into the render buffer */
-	for (i = 0, off = 0; i < rw->size; i++) {
-		if (rw->chars[i] == '\t') {
-			for (int j = 0; j < TABSIZE; j++){
-				//if (!j) rw->render[off++] = '|'; 
-				//else rw->render[off++] = ' ';
-				rw->render[off++] = ' ';
-			}		
-		} else {
-			rw->render[off++] = rw->chars[i];
-		}
-	}
-	rw->render[off] = '\0';
-	rw->r_size = off - cc;
-	rw->utf = cc + ut;
-}
-
 /* -------------------------------- draw operations -------------------------------- */
 
 /* Open a file and put it into a buffer line by line */
@@ -398,7 +327,7 @@ void fileOpen (char *filename)
 	while ((linelen = getline(&line, &linecap, fp)) != -1) {
 		while (linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
 			linelen--;
-		rowAddLast(line, linelen);
+		rowAddLast(&rows, line, linelen);
 	}
 	/* free the line buffer */
 	free(line);
@@ -407,170 +336,6 @@ void fileOpen (char *filename)
 }
 
 /*------------------------------------- file operations ----------------------------------*/
-
-/* Add a row to the file buffer */
-void rowAddLast (char *s, int len)
-{
-	/* Extend the block of memory containing the lines */
-	row *newr = realloc(rows.rw, (rows.rownum + 1) * sizeof(row));
-	if (newr == NULL) termDie("realloc in rowAddLast");
-	else rows.rw = newr;
-
-	/* Allocate memory for the line and copy it
-	 * at the current row number */
-	rows.rw[rows.rownum].chars = malloc(len  + 1);
-	if (rows.rw[rows.rownum].chars == NULL) termDie("malloc in rowAddLast chars");
-	memcpy(rows.rw[rows.rownum].chars, s, len);
-	rows.rw[rows.rownum].chars[len] = '\0';
-	rows.rw[rows.rownum].size = len;
-	updateRender(&rows.rw[rows.rownum]);
-	rows.rownum++;
-}
-
-void rowInit (void)
-{
-	rows.rw = NULL;
-	rows.rownum = 0;
-}
-
-void rowAddChar (row *rw, char c, int pos)
-{
-	/* Check if char is valid */
-	if (!c || (iscntrl(c) && c != '\t')) return;
-	
-	/* extend the string */
-	rw->size++;
-	char *t = realloc(rw->chars, rw->size + 1);
-	if (t == NULL) termDie("realloc in rowAddchar");
-	rw->chars = t;
-
-	/* make space for the new char */
-	memcpy(&rw->chars[pos + 1], &rw->chars[pos], (rw->size + 1) - (pos + 1));
-
-	/* add the new char */
-	rw->chars[pos] = c;
-
-	updateRender(rw);
-}
-
-int rowDeleteChar (row *rw, int select, int pos) // WIP
-{
-	/* Check if the character is valid */
-	if (rw->chars[pos - 1] == '\0' && pos) return 0;
-	if (!pos && !select) return 0;
-	if (rw->chars[pos] == '\0' && select) return 0;
-	//change pos based on the command
-	if (!select) pos--;
-
-	memcpy(&rw->chars[pos], &rw->chars[pos + 1], rw->size - pos);
-
-	char *s = realloc(rw->chars, rw->size);
-	if (s != NULL) rw->chars = s;
-	rw->size--;
-
-	updateRender(rw);
-	return 1;
-}
-
-void rowAddRow (int pos) // WIP; TO DOCUMENT
-{
-	/* 	MOVE THE ROWS AWAY */
-	/* add another line to the bottom containing the previous
-	 * (last) line, effectively making new space */
-	rowAddLast(rows.rw[rows.rownum - 1].chars, rows.rw[rows.rownum - 1].size);
-
-	/* copy all other lines until the specified position to the next one */
-	for (int last = rows.rownum - 1; last > pos; last--)
-		rowCpy(&rows.rw[last], &rows.rw[last - 1]);
-
-	/* SPLIT THE ROW AT POS AND STORE IT */
-	/* Get the row length at position after the cursor */
-	int len = rows.rw[pos].size - t.cur.x;
-	/* create a dummy row as the new row souce */
-	row nex = EROW;
-	/* allocate a buffer */
-	char *s = malloc(len + 1);
-	if (s == NULL) termDie("malloc in rowAddRow s");
-	/* copy the contents of the pos row after the cursor into the buffer */
-	memcpy(s, &rows.rw[pos].chars[t.cur.x], len);
-	s[len] = '\0';
-	/* update the dummy row */
-	nex.chars = s;
-	nex.size = strlen(s);
-	
-	/* MAKE THE SPLIT INTO TWO LINES */
-	/* shrink the line at pos */
-	char *p = realloc(rows.rw[pos].chars, t.cur.x + 1);
-	if (p == NULL) termDie("realloc in rowAddRow");
-	rows.rw[pos].chars = p;
-	/* and terminate it with null like a good boi */
-	rows.rw[pos].chars[t.cur.x] = '\0';
-	/* update info and render */
-	rows.rw[pos].size = t.cur.x;
-	updateRender(&rows.rw[pos]);
-
-	/* copy the dummy to the new line and free */
-	rowCpy(&rows.rw[pos + 1], &nex);
-	rowFree(&nex);
-
-}
-
-void rowFree (row *rw) // WIP
-{
-	/* Free both render and memory strings */
-	free(rw->render);
-	free(rw->chars);
-	/* clear sizes */
-	rw->size = 0;
-	rw->r_size = 0;
-	rw->utf = 0;
-}
-
-void rowCpy (row *to, row *from) // WIP
-{
-	/* Free the destination row (without destroying it) */
-	rowFree(to);
-	/* Allocate space for the new string */
-	to->chars = (char*) malloc(strlen(from->chars) + 1);
-	if (to->chars == NULL) termDie("malloc in rowCpy");
-	/* And update the size */
-	to->size = from->size;
-	/* Then copy the chars from the source row to the destination row */
-	memcpy(to->chars, from->chars, to->size);
-	to->chars[to->size] = '\0';
-	/* Then update the render */
-	updateRender(to);
-}
-
-void rowAppendString (row *rw, char *s, int len)
-{
-	/* reallocate the row to accomodate for the added string */
-	char *temp = realloc(rw->chars, rw->size + len + 1);
-	if (temp == NULL) termDie("realloc in rowAppendString");
-	rw->chars = temp;
-
-	memcpy(&rw->chars[rw->size], s, len);
-	rw->size += len;
-	rw->chars[rw->size] = '\0';
-	
-	updateRender(rw);
-}
-
-void rowDeleteRow (int pos)
-{
-	if (rows.rownum == 1) return;
-	if (pos >= rows.rownum) return;
-	if (pos < 0) return;
-
-	for (; pos < rows.rownum - 1; pos++) {
-		rowCpy(&rows.rw[pos], &rows.rw[pos + 1]); // rowcpy already frees the row
-	}
-	rows.rownum--;
-	rowFree(&rows.rw[rows.rownum]);
-	row *temp = realloc(rows.rw, sizeof(row) * rows.rownum);
-	if (temp == NULL) termDie("realloc in rowDeleteRow");
-	rows.rw = temp;
-}
 
 /* ----------------------------- row operations --------------------------- */
 
@@ -733,7 +498,7 @@ void handleDel (int select)
 		if (t.cur.x <= 0 && t.cur.y > 0) {
 			t.cur.x = rows.rw[t.cur.y - 1].size;
 			rowAppendString(&rows.rw[t.cur.y - 1], rows.rw[t.cur.y].chars, rows.rw[t.cur.y].size);
-			rowDeleteRow(t.cur.y);
+			rowDeleteRow(&rows, t.cur.y);
 			t.cur.y--;
 		} else {
 			if (isUtf(rows.rw[t.cur.y].chars[t.cur.x - 1])) {
@@ -748,7 +513,7 @@ void handleDel (int select)
 	} else {
 		if (t.cur.x >= rows.rw[t.cur.y].size) {
 			rowAppendString(&rows.rw[t.cur.y], rows.rw[t.cur.y + 1].chars, rows.rw[t.cur.y + 1].size);
-			rowDeleteRow(t.cur.y + 1);
+			rowDeleteRow(&rows, t.cur.y + 1);
 		} else {
 			if (isStart(rows.rw[t.cur.y].chars[t.cur.x])) {
 				do {
