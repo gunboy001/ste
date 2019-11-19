@@ -5,7 +5,7 @@ LFLAGS=-lncursesw
 DFLAGS=-g -O0 -v -da -Q
 
 OBJ=ste.o fbuffer.o
-DEPS=fbuffer.h
+DEPS=fbuffer.h config.h
 
 ste: $(OBJ)
 	$(CC) $(CFLAGS) $(OFLAGS) $(LFLAGS) -o $@ $^

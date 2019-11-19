@@ -1,8 +1,6 @@
 #ifndef _FBUFFER_H_
 #define _FBUFFER_H_
 
-#define TABSIZE 4 // Tab size as used in render
-
 /* Row structure, defines actual and
  * render chars, actual and render size
  * and difference between render and

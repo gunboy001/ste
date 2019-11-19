@@ -5,6 +5,7 @@
 #include <locale.h>
 
 #include "fbuffer.h"
+#include "config.h"
 
 /* defines */
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
