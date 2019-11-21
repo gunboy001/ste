@@ -93,9 +93,6 @@ int main (int argc, char *argv[])
 	/* Set the statusbar left (static) message */
 	snprintf(t.statusbar, STAT_SIZE, "%s %d lines %dx%d", argv[1], rows.rownum, t.dim.y, t.dim.x);
 
-	/* remember the initial row number */
-//	int irow = decimalSize(rows.rownum);
-
 	/* Main event loop */
 	int c;
 	while (1) {
@@ -154,7 +151,6 @@ int main (int argc, char *argv[])
 				t.cur.x++;
 				break;
 		}
-		//if (decimalSize(rows.rownum) - irow) updateInfo();
 	}
 
 	/* If by chance i find myself here be sure
@@ -441,7 +437,6 @@ void curUpdateRender ()
 		t.cur.r_y = 0;
 	}
 
-	// x
 	static int i, c;
 	for (c = i = 0, t.cur.r_x = 0; i < t.cur.x; i++) {
 		c = rows.rw[t.cur.y].chars[i];
@@ -544,17 +539,20 @@ int isStart (int c) {
 	return (isUtf(c) && !isCont(c) ? 1 : 0);
 }
 
-int editorFind (const char* needle, int* y, int* x)
+int editorFind (const char* needle, int *y, int *x)
 {
+	/* Create a pointer to store the location of the match */
 	char *res = NULL;
-	int i, c;
+	static int i, c;
 
+	/* Search trough all the buffer */
 	for (i = *y + 1; i < rows.rownum; i++) {
 			res = strstr(rows.rw[i].chars, needle);
 			if (res != NULL) break;
 	}
 	if (res == NULL) return 0;
 
+	/* If something wa found convert from pointer to yx coodinates */
 	*y = c = i;
 	for (i = 0; i <= rows.rw[c].size; i++)
 		if (&rows.rw[c].chars[i] == res) break;
