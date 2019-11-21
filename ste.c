@@ -338,8 +338,6 @@ void fileOpen (char *filename)
 
 /*------------------------------------- file operations ----------------------------------*/
 
-/* ----------------------------- row operations --------------------------- */
-
 /* take care of the cursor movement */
 void cursorMove (int a)
 {

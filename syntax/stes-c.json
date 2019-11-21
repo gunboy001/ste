@@ -1,0 +1,65 @@
+{ "color" : "grey", "value" : 5}
+{ "color" : "red", "value" : 1}
+{ "color" : "blue", "value" : 2}
+{ "color" : "green", "value" : 3}
+{ "color" : "yellow", "value" : 4}
+{ "color" : "white", "value" : 0}
+{ "color" : "pink", "value" : 6}
+
+{ "type" : "text", "color" : "white"}
+
+{ 
+	"type" : "comment",
+	"color" : "grey",
+	"start" : ["//", "/*"],
+	"end" : ["\n", "*/"]
+}
+
+{
+	"type" : "macro",
+	"color" : "pink",
+	"start" : "#",
+	"end" : " "
+}
+
+{ 
+	"type" : "var",
+	"color" : "blue",
+	"match" : // must have a whitespace after match
+			[
+				"int", "char",
+				"float", "double",
+				"void", "NULL"
+			],
+	"start" : 
+			[
+				"int", "uint",
+				"int_least", "uint_least",
+				"int_fast", "uint_fast",
+				"intptr", "uintptr",
+				"intmax", "uintmax"
+			],
+	"end" : "_t"
+}
+
+{
+	"type" : "struct",
+	"color" : "green",
+	"match" : 
+			[
+				"struct", "enum",
+				"union", "typedef"
+			]
+}
+
+{
+	"type" : "attribute",
+	"color" : "yellow",
+	"match" :
+			[
+				"static", "const",
+				"short", "long",
+				"signed", "unsigned",
+				"inline", "register"
+			]
+}
