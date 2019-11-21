@@ -352,10 +352,10 @@ void cursorMove (int a)
 				do {
 					t.cur.x--;
 				} while(!isStart(rows.rw[t.cur.y].chars[t.cur.x]));
-			} else 
+			} else
 				t.cur.x--;
 			break;
-			
+
 		case (KEY_RIGHT):
 				if (t.cur.x >= rows.rw[t.cur.y].size) {
 					if (t.cur.y < rows.rownum - 1) {
@@ -366,10 +366,10 @@ void cursorMove (int a)
 					do {
 						t.cur.x++;
 					} while(isCont(rows.rw[t.cur.y].chars[t.cur.x]));
-				} else 
+				} else
 					t.cur.x++;
 			break;
-			
+
 		case (KEY_UP):
 			if (t.cur.y) {
 				t.cur.y--;
@@ -418,7 +418,7 @@ void curUpdateRender ()
 		right: x -> t.cur.off_x + (t.dim.x - 1)
 		upper: y -> t.cur.off_y
 		lower: y -> t.cur.off_y + (t.dim.y - 1)
-	The rows are drawn top to botom, starting 
+	The rows are drawn top to botom, starting
 	from the left most char of the render area
 	until row end or when the characters hit
 	the right bound.
@@ -435,7 +435,7 @@ void curUpdateRender ()
 		if (t.cur.y == t.cur.off_y + t.dim.y) t.cur.off_y++;
 		else t.cur.off_y += t.cur.y - (t.cur.off_y + t.dim.y) + 1;
 		t.cur.r_y = t.dim.y - 1;
-	
+
 	} else if (t.cur.y < t.cur.off_y) {
 		t.cur.off_y -= t.cur.off_y - t.cur.y;
 		t.cur.r_y = 0;
@@ -445,7 +445,7 @@ void curUpdateRender ()
 	static int i, c;
 	for (c = i = 0, t.cur.r_x = 0; i < t.cur.x; i++) {
 		c = rows.rw[t.cur.y].chars[i];
-		
+
 		/* continue (skip increment) if you encounter a continuation char */
 		if (isCont(c)) continue;
 		else if (isStart(c)) t.cur.r_x++;
