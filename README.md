@@ -5,7 +5,4 @@ ste is a simple terminal editor partly inspired by micro features include
 * easy to lookaround the code
 
 
-ste is written purely in C using ncurses and the gperftools' tcmalloc which makes things way faster given the amount of malloc calls required.
-
-
-also do what the fuck you want with it.
+basically how you'd want nano to be if it actually had sane defauts
