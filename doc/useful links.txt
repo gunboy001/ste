@@ -1,0 +1,12 @@
+Utf8 and unicode in C
+	https://www.cprogramming.com/tutorial/unicode.html
+
+Asciidoc reference:
+	https://asciidoctor.org/docs/asciidoc-writers-guide/
+	https://gist.github.com/dcode/0cfbf2699a1fe9b46ff04c41721dda74
+
+Parsing Json in C:
+	https://github.com/zserge/jsmn
+
+Sconstruct a make alternative:
+	https://github.com/SCons/scons/wiki/SConsCrashCourse
