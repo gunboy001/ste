@@ -1,0 +1,27 @@
+= STE (Simple Terminal Editor)
+Doc Writer <alemauri001@gmail.com>
+v0.1, 2019-11-23
+
+ste is a simple terminal editor partly inspired by micro
+and GNU-nano +
+.Features include
+* Simple commands (ctrl-s to save)
+* Light on resources
+* Great for learning
+
+The main focus is to make a good terminal text and code
+editor without all the mode nonsense, providing just
+enough to the end user to be useful but not too much.
+Of course this is an open source project and as for myself
+I take it as a learning ground, basically try not to set
+your expectations too high.
+
+As for contributing goes feel free to add features, best
+if in your own fork and then submint a merge request, the
+only caveat is __comment your code__, not just for good
+but because, as I said, I mainly view this project as a
+learning gorund that can be useful to many others joining
+in the adventure of writing one of the most basic, yet
+most complex, tool.
+
+Last but not least: have fun.
