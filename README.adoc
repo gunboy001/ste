@@ -3,11 +3,7 @@ Doc Writer <alemauri001@gmail.com>
 v0.1, 2019-11-23
 
 ste is a simple terminal editor partly inspired by micro
-and GNU-nano +
-.Features include
-* Simple commands (ctrl-s to save)
-* Light on resources
-* Great for learning
+and GNU-nano
 
 The main focus is to make a good terminal text and code
 editor without all the mode nonsense, providing just
