@@ -145,7 +145,6 @@ int main (int argc, char *argv[])
 				break;
 
 			default:
-				if (iscntrl(c)) break;
 				if (c == KEY_STAB) c = '\t';
 				rowAddChar(&rows.rw[t.cur.y], c, t.cur.x);
 				t.cur.x++;

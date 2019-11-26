@@ -4,3 +4,5 @@ hello
 ste.c.*
 *.bak
 .sconsign*
+.sconsign.dblite
+*.o
