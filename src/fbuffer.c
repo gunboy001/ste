@@ -4,14 +4,14 @@
 #include <string.h>
 #include <ctype.h>
 
-void bufInit (buf *b)
+void bufInit (fbuffer *b)
 {
 	b->rw = NULL;
 	b->rownum = 0;
 }
 
 /* Add a row to the file buffer */
-void rowAddLast (buf *b, char *s, int len)
+void rowAddLast (fbuffer *b, char *s, int len)
 {
 	/* Extend the block of memory containing the lines */
 	row *newr = realloc(b->rw, (b->rownum + 1) * sizeof(row));
@@ -68,7 +68,7 @@ int rowDeleteChar (row *rw, int select, int pos) // WIP
 	return 1;
 }
 
-void rowAddRow (buf *b, int pos, int cur) // WIP; TO DOCUMENT
+void rowAddRow (fbuffer *b, int pos, int cur) // WIP; TO DOCUMENT
 {
 	/* 	MOVE THE ROWS AWAY */
 	/* add another line to the bottom containing the previous
@@ -152,7 +152,7 @@ void rowAppendString (row *rw, char *s, int len)
 	updateRender(rw);
 }
 
-void rowDeleteRow (buf *b, int pos)
+void rowDeleteRow (fbuffer *b, int pos)
 {
 	if (b->rownum == 1) return;
 	if (pos >= b->rownum) return;

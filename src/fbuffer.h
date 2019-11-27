@@ -19,21 +19,21 @@ typedef struct row {
 
 /* Rows structure (or file buffer)
  * defines rows and teh number of rows */
-typedef struct buf{
+typedef struct fbuffer{
 	row *rw;
 	int rownum;
-} buf;
+} fbuffer;
 
-void bufInit (buf *b);
+void bufInit (fbuffer *b);
 
 void rowAddChar (row *rw, char c, int pos);
 int rowDeleteChar (row *rw, int select, int pos);
 void rowCpy (row *to, row *from);
-void rowAddRow (buf *b, int pos, int cur);
+void rowAddRow (fbuffer *b, int pos, int cur);
 void rowFree (row *rw);
 void rowAppendString (row *rw, char *s, int len);
-void rowDeleteRow (buf *b, int pos);
-void rowAddLast (buf *b, char *s, int len);
+void rowDeleteRow (fbuffer *b, int pos);
+void rowAddLast (fbuffer *b, char *s, int len);
 
 void updateRender (row *rw);
 

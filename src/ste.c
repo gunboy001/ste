@@ -12,6 +12,13 @@
 #define STAT_SIZE 128
 #define _XOPEN_SOURCE_EXTENDED
 #define _GNU_SOURCE
+#define SBUF_SIZE 2048
+
+// Search buffer
+typedef struct sbuf {
+	char c[SBUF_SIZE];
+	int num;
+} sbuf;
 
 /* main data structure containing:
  *	-cursor position
@@ -37,9 +44,11 @@ struct term {
 
 	char statusbar[STAT_SIZE];
 	int pad;
+	char mode_b;
+	sbuf search_buffer;
 } t;
 
-buf rows;
+fbuffer rows;
 
 const char *msg[] = {
 					"Find: ",
@@ -73,6 +82,9 @@ static void handleDel (int select);
 /* testing */
 static void updateInfo (void);
 static int whatsThat (void);
+static void insert (sbuf *buf, int c);
+static inline void flush (sbuf *buf);
+static void toString (sbuf *buf, char *s);
 
 /* --------------------------------- main ------------------------------------ */
 int main (int argc, char *argv[])
@@ -124,9 +136,19 @@ int main (int argc, char *argv[])
 			case (KEY_ENTER):
 			case (10):
 			case ('\r'):
-				rowAddRow(&rows, t.cur.y, t.cur.x);
-				t.cur.y++;
-				t.cur.x = 0;
+				if ((t.mode_b & 0x1) == 0x0) {
+					rowAddRow(&rows, t.cur.y, t.cur.x);
+					t.cur.y++;
+					t.cur.x = 0;
+				} else {
+					char *query = malloc(t.search_buffer.num + 1);
+					if (query == NULL) termDie("maloc in query allocation");
+					toString(&t.search_buffer, query);
+					editorFind(query, &t.cur.y, &t.cur.x);
+					// Toggle mode
+					t.mode_b ^= 0x1;
+					flush (&t.search_buffer);
+				}
 				break;
 
 			case (KEY_END):
@@ -138,16 +160,25 @@ int main (int argc, char *argv[])
 				break;
 
 			case (CTRL('f')):
-				if (!editorFind("for", &t.cur.y, &t.cur.x)) {
+				/*if (!editorFind("for", &t.cur.y, &t.cur.x)) {
 					t.cur.y = 0;
 					editorFind("for", &t.cur.y, &t.cur.x);
-				}
+				}*/
+
+				// Toggle mode
+				t.mode_b ^= 0x1;
+				flush (&t.search_buffer);
+
 				break;
 
 			default:
-				if (c == KEY_STAB) c = '\t';
-				rowAddChar(&rows.rw[t.cur.y], c, t.cur.x);
-				t.cur.x++;
+				if ((t.mode_b & 0x1) == 0x0) {
+					if (c == KEY_STAB) c = '\t';
+					rowAddChar(&rows.rw[t.cur.y], c, t.cur.x);
+					t.cur.x++;
+				} else {
+					insert(&t.search_buffer, c);
+				}
 				break;
 		}
 	}
@@ -557,5 +588,23 @@ int editorFind (const char* needle, int *y, int *x)
 		if (&rows.rw[c].chars[i] == res) break;
 	*x = i;
 	return 1;
+}
+
+void insert (sbuf *buf, int c)
+{
+	if (buf->num < SBUF_SIZE - 1)
+		buf->c[buf->num++] = c;
+}
+
+void flush (sbuf *buf)
+{
+	buf->num = 0;
+}
+
+void toString (sbuf *buf, char *s)
+{
+	for (int i = 0; i < buf->num; i++)
+		s[i] = buf->c[i];
+	s[buf->num] = '\0';
 }
 /*--------------------------------- testing ------------------------------------*/
