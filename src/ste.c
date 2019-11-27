@@ -84,7 +84,6 @@ static void updateInfo (void);
 static int whatsThat (void);
 static void insert (sbuf *buf, int c);
 static inline void flush (sbuf *buf);
-static void toString (sbuf *buf, char *s);
 
 /* --------------------------------- main ------------------------------------ */
 int main (int argc, char *argv[])
@@ -141,10 +140,7 @@ int main (int argc, char *argv[])
 					t.cur.y++;
 					t.cur.x = 0;
 				} else {
-					char *query = malloc(t.search_buffer.num + 1);
-					if (query == NULL) termDie("maloc in query allocation");
-					toString(&t.search_buffer, query);
-					editorFind(query, &t.cur.y, &t.cur.x);
+					editorFind(t.search_buffer.c, &t.cur.y, &t.cur.x);
 					// Toggle mode
 					t.mode_b ^= 0x1;
 					flush (&t.search_buffer);
@@ -160,11 +156,6 @@ int main (int argc, char *argv[])
 				break;
 
 			case (CTRL('f')):
-				/*if (!editorFind("for", &t.cur.y, &t.cur.x)) {
-					t.cur.y = 0;
-					editorFind("for", &t.cur.y, &t.cur.x);
-				}*/
-
 				// Toggle mode
 				t.mode_b ^= 0x1;
 				flush (&t.search_buffer);
@@ -267,7 +258,10 @@ void drawScreen ()
 	/* draw the lines */
 	drawLines();
 	/* draw the bar */
-	drawBar(t.statusbar);
+	drawBar(
+		((t.mode_b & 0x1) == 0) ? t.statusbar :
+		t.search_buffer.c
+		);
 	/* move back to the cursor position */
 	lnMove(t.cur.r_y, t.cur.r_x);
 	/* refresh the screen */
@@ -592,8 +586,9 @@ int editorFind (const char* needle, int *y, int *x)
 
 void insert (sbuf *buf, int c)
 {
-	if (buf->num < SBUF_SIZE - 1)
+	if (buf->num < SBUF_SIZE - 2)
 		buf->c[buf->num++] = c;
+	buf->c[buf->num] = '\0';
 }
 
 void flush (sbuf *buf)
@@ -601,10 +596,4 @@ void flush (sbuf *buf)
 	buf->num = 0;
 }
 
-void toString (sbuf *buf, char *s)
-{
-	for (int i = 0; i < buf->num; i++)
-		s[i] = buf->c[i];
-	s[buf->num] = '\0';
-}
 /*--------------------------------- testing ------------------------------------*/
