@@ -13,7 +13,7 @@
 /* defines */
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
 #define STAT_SIZE 128
-#define SBUF_SIZE 2048
+#define CBUF_SIZE 2048
 
 #define MODE_MASK 0x1
 #define COMMAND_MASK 0x06
@@ -26,10 +26,10 @@
 #define MODIFIED 0x80
 
 // Search buffer
-typedef struct sbuf {
-	char c[SBUF_SIZE];
-	int num;
-} sbuf;
+typedef struct CharBuffer {
+	char c[CBUF_SIZE];
+	int num, cur;
+} CharBuffer;
 
 /* main data structure containing:
  *	-cursor position
@@ -56,10 +56,10 @@ struct term {
 	char statusbar[STAT_SIZE];
 	int pad;
 	char mode_b;
-	sbuf search_buffer;
+	CharBuffer search_buffer;
 } t;
 
-fbuffer rows;
+FileBuffer rows;
 
 const char *msg[] = {
 					"Find: ",
@@ -93,9 +93,12 @@ static void handleDel (int select);
 /* testing */
 static void updateInfo (void);
 static int whatsThat (void);
-static void insert (sbuf *buf, int c);
-static inline void flush (sbuf *buf);
-static void pop (sbuf *buf);
+
+static void sbInsert (CharBuffer *buf, int c);
+static inline void sbFlush (CharBuffer *buf);
+static void sbPop (CharBuffer *buf);
+static void sbMove (CharBuffer *buf, int x);
+
 
 /* --------------------------------- main ------------------------------------ */
 int main (int argc, char *argv[])
@@ -133,7 +136,17 @@ int main (int argc, char *argv[])
 			case (KEY_RIGHT):
 			case (KEY_UP):
 			case (KEY_DOWN):
-				cursorMove(c);
+				if ((t.mode_b & MODE_MASK) == NORMAL_M)
+					cursorMove(c);
+				else
+					switch (c) {
+						case (KEY_LEFT):
+							sbMove(&t.search_buffer, -1);
+							break;
+						case (KEY_RIGHT):
+							sbMove(&t.search_buffer, 1);
+							break;
+					}
 				break;
 
 			case (KEY_BACKSPACE):
@@ -141,7 +154,7 @@ int main (int argc, char *argv[])
 				if ((t.mode_b & MODE_MASK) == NORMAL_M)
 					handleDel(c);
 				else
-					pop(&t.search_buffer);
+					sbPop(&t.search_buffer);
 				break;
 
 			case (KEY_ENTER):
@@ -155,7 +168,7 @@ int main (int argc, char *argv[])
 					editorFind(t.search_buffer.c, &t.cur.y, &t.cur.x);
 					// Toggle mode
 					t.mode_b ^= MODE_MASK;
-					flush (&t.search_buffer);
+					sbFlush (&t.search_buffer);
 				}
 				break;
 
@@ -170,7 +183,7 @@ int main (int argc, char *argv[])
 			case (CTRL('f')):
 				// Toggle mode
 				t.mode_b ^= MODE_MASK;
-				flush (&t.search_buffer);
+				sbFlush (&t.search_buffer);
 
 				break;
 
@@ -181,7 +194,7 @@ int main (int argc, char *argv[])
 					rowAddChar(&rows.rw[t.cur.y], c, t.cur.x);
 					t.cur.x++;
 				} else {
-					insert(&t.search_buffer, c);
+					sbInsert(&t.search_buffer, c);
 				}
 				break;
 		}
@@ -232,6 +245,9 @@ void termInit (void)
 	/* Initialize the data staructure */
 	t.cur.x = t.cur.off_x = 0;
 	t.cur.y = t.cur.off_y = 0;
+
+	t.search_buffer.cur = 0;
+	t.search_buffer.num = 0;
 }
 
 /* Calculate the correct spacing for the line numbers
@@ -589,7 +605,7 @@ int editorFind (const char* needle, int *y, int *x)
 	}
 	if (res == NULL) return 0;
 
-	/* If something wa found convert from pointer to yx coodinates */
+	/* If something was found convert from pointer to yx coodinates */
 	*y = c = i;
 	for (i = 0; i <= rows.rw[c].size; i++)
 		if (&rows.rw[c].chars[i] == res) break;
@@ -597,20 +613,31 @@ int editorFind (const char* needle, int *y, int *x)
 	return 1;
 }
 
-void insert (sbuf *buf, int c)
+void sbMove (CharBuffer *buf, int x) {
+	buf->cur += (x);
+	if (buf->cur < 0) buf->cur = 0;
+	if (buf->cur >= buf->num) buf->cur = buf->num - 1;
+} 
+
+void sbInsert (CharBuffer *buf, int c)
 {
-	if (buf->num < SBUF_SIZE - 2)
-		buf->c[buf->num++] = c;
-	buf->c[buf->num] = '\0';
+	if (buf->num < CBUF_SIZE - 2) {
+		buf->c[buf->cur++] = c;
+		buf->c[++(buf->num)] = '\0';
+	}
 }
 
-void flush (sbuf *buf)
+void sbFlush (CharBuffer *buf)
 {
 	buf->num = 0;
+	buf->cur = 0;
 }
 
-void pop (sbuf *buf)
+void sbPop (CharBuffer *buf)
 {
-	if (buf->num) buf->c[--(buf->num)] = '\0';
+	if (buf->num) {
+		buf->c[--(buf->num)] = '\0';
+		sbMove(buf, -1);
+	}
 }
 /*--------------------------------- testing ------------------------------------*/

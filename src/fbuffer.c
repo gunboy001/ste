@@ -4,17 +4,17 @@
 #include <string.h>
 #include <ctype.h>
 
-void bufInit (fbuffer *b)
+void bufInit (FileBuffer *b)
 {
 	b->rw = NULL;
 	b->rownum = 0;
 }
 
 /* Add a row to the file buffer */
-void rowAddLast (fbuffer *b, char *s, int len)
+void rowAddLast (FileBuffer *b, char *s, int len)
 {
 	/* Extend the block of memory containing the lines */
-	row *newr = realloc(b->rw, (b->rownum + 1) * sizeof(row));
+	Row *newr = realloc(b->rw, (b->rownum + 1) * sizeof(Row));
 	//if (newr == NULL) termDie("realloc in rowAddLast");
 	b->rw = newr;
 
@@ -29,7 +29,7 @@ void rowAddLast (fbuffer *b, char *s, int len)
 	b->rownum++;
 }
 
-void rowAddChar (row *rw, char c, int pos)
+void rowAddChar (Row *rw, char c, int pos)
 {
 	/* Check if char is valid */
 	if (!c || (iscntrl(c) && c != '\t')) return;
@@ -49,7 +49,7 @@ void rowAddChar (row *rw, char c, int pos)
 	updateRender(rw);
 }
 
-int rowDeleteChar (row *rw, int select, int pos) // WIP
+int rowDeleteChar (Row *rw, int select, int pos) // WIP
 {
 	/* Check if the character is valid */
 	if (rw->chars[pos - 1] == '\0' && pos) return 0;
@@ -68,7 +68,7 @@ int rowDeleteChar (row *rw, int select, int pos) // WIP
 	return 1;
 }
 
-void rowAddRow (fbuffer *b, int pos, int cur) // WIP; TO DOCUMENT
+void rowAddRow (FileBuffer *b, int pos, int cur) // WIP; TO DOCUMENT
 {
 	/* 	MOVE THE ROWS AWAY */
 	/* add another line to the bottom containing the previous
@@ -83,7 +83,7 @@ void rowAddRow (fbuffer *b, int pos, int cur) // WIP; TO DOCUMENT
 	/* Get the row length at position after the cursor */
 	int len = b->rw[pos].size - cur;
 	/* create a dummy row as the new row souce */
-	row nex = EROW;
+	Row nex = EROW;
 	/* allocate a buffer */
 	char *s = malloc(len + 1);
 	//if (s == NULL) termDie("malloc in rowAddRow s");
@@ -111,7 +111,7 @@ void rowAddRow (fbuffer *b, int pos, int cur) // WIP; TO DOCUMENT
 
 }
 
-void rowFree (row *rw) // WIP
+void rowFree (Row *rw) // WIP
 {
 	/* Free both render and memory strings */
 	free(rw->render);
@@ -122,7 +122,7 @@ void rowFree (row *rw) // WIP
 	rw->utf = 0;
 }
 
-void rowCpy (row *to, row *from) // WIP
+void rowCpy (Row *to, Row *from) // WIP
 {
 	/* Free the destination row (without destroying it) */
 	rowFree(to);
@@ -138,7 +138,7 @@ void rowCpy (row *to, row *from) // WIP
 	updateRender(to);
 }
 
-void rowAppendString (row *rw, char *s, int len)
+void rowAppendString (Row *rw, char *s, int len)
 {
 	/* reallocate the row to accomodate for the added string */
 	char *temp = realloc(rw->chars, rw->size + len + 1);
@@ -152,7 +152,7 @@ void rowAppendString (row *rw, char *s, int len)
 	updateRender(rw);
 }
 
-void rowDeleteRow (fbuffer *b, int pos)
+void rowDeleteRow (FileBuffer *b, int pos)
 {
 	if (b->rownum == 1) return;
 	if (pos >= b->rownum) return;
@@ -163,12 +163,12 @@ void rowDeleteRow (fbuffer *b, int pos)
 	}
 	b->rownum--;
 	rowFree(&b->rw[b->rownum]);
-	row *temp = realloc(b->rw, sizeof(row) * b->rownum);
+	Row *temp = realloc(b->rw, sizeof(Row) * b->rownum);
 	//if (temp == NULL) termDie("realloc in rowDeleteRow");
 	b->rw = temp;
 }
 
-void updateRender (row *rw)
+void updateRender (Row *rw)
 {
 	/* count the special characters
 	 * spaces, utf-8 continuation chars */

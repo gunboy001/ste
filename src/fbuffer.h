@@ -6,36 +6,36 @@
  * and difference between render and
  * real size of the row 
  * Utf-8 continuation chars */
-typedef struct row {
+typedef struct Row {
 	int size;
 	int r_size;
 	int utf;
 	char *chars;
 	char *render;
-} row;
+} Row;
 
 /* Empty row initializer */
 #define EROW {0, 0, 0, NULL, NULL} 
 
 /* Rows structure (or file buffer)
  * defines rows and teh number of rows */
-typedef struct fbuffer{
-	row *rw;
+typedef struct FileBuffer{
+	Row *rw;
 	int rownum;
-} fbuffer;
+} FileBuffer;
 
-void bufInit (fbuffer *b);
+void bufInit (FileBuffer *b);
 
-void rowAddChar (row *rw, char c, int pos);
-int rowDeleteChar (row *rw, int select, int pos);
-void rowCpy (row *to, row *from);
-void rowAddRow (fbuffer *b, int pos, int cur);
-void rowFree (row *rw);
-void rowAppendString (row *rw, char *s, int len);
-void rowDeleteRow (fbuffer *b, int pos);
-void rowAddLast (fbuffer *b, char *s, int len);
+void rowAddChar (Row *rw, char c, int pos);
+int rowDeleteChar (Row *rw, int select, int pos);
+void rowCpy (Row *to, Row *from);
+void rowAddRow (FileBuffer *b, int pos, int cur);
+void rowFree (Row *rw);
+void rowAppendString (Row *rw, char *s, int len);
+void rowDeleteRow (FileBuffer *b, int pos);
+void rowAddLast (FileBuffer *b, char *s, int len);
 
-void updateRender (row *rw);
+void updateRender (Row *rw);
 
 int isUtf (int c);
 int isCont (int c);
