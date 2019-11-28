@@ -1,3 +1,6 @@
+#define _XOPEN_SOURCE_EXTENDED
+#define _GNU_SOURCE
+
 #include <ncurses.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,9 +13,17 @@
 /* defines */
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
 #define STAT_SIZE 128
-#define _XOPEN_SOURCE_EXTENDED
-#define _GNU_SOURCE
 #define SBUF_SIZE 2048
+
+#define MODE_MASK 0x1
+#define COMMAND_MASK 0x06
+
+#define NORMAL_M 0x0
+#define COMMAND_M 0x1
+
+#define FIND_C 0x1
+
+#define MODIFIED 0x80
 
 // Search buffer
 typedef struct sbuf {
@@ -84,6 +95,7 @@ static void updateInfo (void);
 static int whatsThat (void);
 static void insert (sbuf *buf, int c);
 static inline void flush (sbuf *buf);
+static void pop (sbuf *buf);
 
 /* --------------------------------- main ------------------------------------ */
 int main (int argc, char *argv[])
@@ -125,24 +137,24 @@ int main (int argc, char *argv[])
 				break;
 
 			case (KEY_BACKSPACE):
-				handleDel(0);
-				break;
-
 			case (KEY_DC):
-				handleDel(1);
+				if ((t.mode_b & MODE_MASK) == NORMAL_M)
+					handleDel(c);
+				else
+					pop(&t.search_buffer);
 				break;
 
 			case (KEY_ENTER):
 			case (10):
 			case ('\r'):
-				if ((t.mode_b & 0x1) == 0x0) {
+				if ((t.mode_b & MODE_MASK) == NORMAL_M) {
 					rowAddRow(&rows, t.cur.y, t.cur.x);
 					t.cur.y++;
 					t.cur.x = 0;
 				} else {
 					editorFind(t.search_buffer.c, &t.cur.y, &t.cur.x);
 					// Toggle mode
-					t.mode_b ^= 0x1;
+					t.mode_b ^= MODE_MASK;
 					flush (&t.search_buffer);
 				}
 				break;
@@ -157,13 +169,14 @@ int main (int argc, char *argv[])
 
 			case (CTRL('f')):
 				// Toggle mode
-				t.mode_b ^= 0x1;
+				t.mode_b ^= MODE_MASK;
 				flush (&t.search_buffer);
 
 				break;
 
 			default:
-				if ((t.mode_b & 0x1) == 0x0) {
+				if ((t.mode_b & MODE_MASK) == NORMAL_M) {
+					t.mode_b |= MODIFIED;
 					if (c == KEY_STAB) c = '\t';
 					rowAddChar(&rows.rw[t.cur.y], c, t.cur.x);
 					t.cur.x++;
@@ -259,7 +272,7 @@ void drawScreen ()
 	drawLines();
 	/* draw the bar */
 	drawBar(
-		((t.mode_b & 0x1) == 0) ? t.statusbar :
+		((t.mode_b & MODE_MASK) == NORMAL_M) ? t.statusbar :
 		t.search_buffer.c
 		);
 	/* move back to the cursor position */
@@ -512,7 +525,7 @@ int whatsThat (void) {
 
 void handleDel (int select)
 {	
-	if (!select) {
+	if (select == KEY_BACKSPACE) {
 		if (t.cur.x <= 0 && t.cur.y > 0) {
 			t.cur.x = rows.rw[t.cur.y - 1].size;
 			rowAppendString(&rows.rw[t.cur.y - 1], rows.rw[t.cur.y].chars, rows.rw[t.cur.y].size);
@@ -528,7 +541,7 @@ void handleDel (int select)
 			if (rowDeleteChar(&rows.rw[t.cur.y], 0, t.cur.x))
 				t.cur.x--;
 		}
-	} else {
+	} else if (select == KEY_DC) {
 		if (t.cur.x >= rows.rw[t.cur.y].size) {
 			rowAppendString(&rows.rw[t.cur.y], rows.rw[t.cur.y + 1].chars, rows.rw[t.cur.y + 1].size);
 			rowDeleteRow(&rows, t.cur.y + 1);
@@ -596,4 +609,8 @@ void flush (sbuf *buf)
 	buf->num = 0;
 }
 
+void pop (sbuf *buf)
+{
+	if (buf->num) buf->c[--(buf->num)] = '\0';
+}
 /*--------------------------------- testing ------------------------------------*/
