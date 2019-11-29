@@ -10,3 +10,9 @@ Parsing Json in C:
 
 Sconstruct a make alternative:
 	https://github.com/SCons/scons/wiki/SConsCrashCourse
+
+Write a simple text editor written in pure C:
+	https://viewsourcecode.org/snaptoken/kilo/
+
+All C keywords:
+	https://www.programiz.com/c-programming/list-all-keywords-c-language

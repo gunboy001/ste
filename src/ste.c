@@ -228,6 +228,10 @@ void termInit (void)
 	/* Turn off echoing */
 	noecho();
 
+	/* Other standard options */
+	nonl();
+	intrflush(stdscr, FALSE);
+
 	/* Set the tab size */
 	set_tabsize(TABSIZE);
 
