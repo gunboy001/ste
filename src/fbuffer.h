@@ -1,6 +1,8 @@
 #ifndef _FBUFFER_H_
 #define _FBUFFER_H_
-
+#ifndef _XOPEN_SOURCE 
+	#define _XOPEN_SOURCE       /* See feature_test_macros(7) */
+#endif
 /* Row structure, defines actual and
  * render chars, actual and render size
  * and difference between render and

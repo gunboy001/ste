@@ -6,6 +6,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <locale.h>
+#include <wchar.h>
 
 #include "fbuffer.h"
 #include "config.h"
@@ -14,6 +15,7 @@
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
 #define STAT_SIZE 128
 #define CBUF_SIZE 2048
+#define MAX_LINE 1024
 
 #define MODE_MASK 0x1
 #define COMMAND_MASK 0x06
@@ -103,6 +105,10 @@ static void sbMove (CharBuffer *buf, int x);
 /* --------------------------------- main ------------------------------------ */
 int main (int argc, char *argv[])
 {
+	/* Init locales */
+	setlocale(LC_ALL, "");
+	setlocale(LC_CTYPE, "");
+
 	/* Initialize the first row */
 	bufInit(&rows);
 
@@ -210,9 +216,6 @@ int main (int argc, char *argv[])
 
 void termInit (void)
 {
-	/* Init locales */
-	setlocale(LC_ALL, "");
-	
 	/* Init the screen and refresh */
 	initscr();
 	refresh();
@@ -324,9 +327,17 @@ void drawLines (void)
 			/* Draw the line matcing render memory */
 			if (&rows.rw[ln] == NULL) termDie("drawlines NULL");
 			if (rows.rw[ln].r_size > t.cur.off_x) {
+				
 				start = t.cur.off_x;
-				while (isCont(rows.rw[ln].render[start])) start++; 
-				addnstr(&rows.rw[ln].render[start], (t.dim.x + 1) + (rows.rw[ln].utf >> 2));
+				while (isCont(rows.rw[ln].render[start])) start++;
+				
+				static wchar_t converted_line[MAX_LINE];
+				static int x = 0;
+				for (x = 0; x < MAX_LINE; x++) converted_line[x] = 0;
+				mbstowcs(converted_line, &rows.rw[ln].render[start], MAX_LINE);
+				addnwstr(converted_line, t.dim.x + 1);
+				
+				//addnstr(&rows.rw[ln].render[start], (t.dim.x + 1) + rows.rw[ln].utf);
 			}
 		}
 		lnMove(i + 1, 0);
@@ -354,9 +365,9 @@ void drawBar (char *s)
 	for (i = len; i <= t.dim.x + t.pad; i++)
 		mvaddch(t.dim.y, i, ' ');
 
-	static char m[40];
-	sprintf(m, "x: %d y: %d Zoom: %c", t.cur.x, t.cur.y, whatsThat());
-	mvaddstr(t.dim.y, t.dim.x + t.pad - strlen(m), m);
+	static char right_message[40];
+	sprintf(right_message, "x: %d y: %d Zoom: %c", t.cur.x, t.cur.y, whatsThat());
+	mvaddstr(t.dim.y, t.dim.x + t.pad - strlen(right_message), right_message);
 
 	/* Return to normal contrast mode */
 	attroff(COLOR_PAIR(2));

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <wchar.h>
 
 void bufInit (FileBuffer *b)
 {
@@ -172,11 +173,27 @@ void updateRender (Row *rw)
 {
 	/* count the special characters
 	 * spaces, utf-8 continuation chars */
-	static int tabs, i, off, cc, ut;
-	for (i = 0, tabs = 0, cc = 0, ut = 0; i < rw->size; i++) {
+	static int tabs, i, off/*, utf_width, utf_chars*/;
+	//static wchar_t wc_tmp;
+	//static char *mb_p;
+
+	tabs = 0;
+	//utf_width = 0;
+	//utf_chars = 0;
+
+	for (i = 0; i < rw->size; i++) {
 		if (rw->chars[i] == '\t') tabs++;
-		else if (isCont(rw->chars[i])) cc++;
-		else if (isUtf(rw->chars[i])) ut++;
+
+		/*else if (isStart(rw->chars[i])) {
+				utf_chars++;
+				wc_tmp = 0;
+				mb_p = &rw->chars[i];
+				//int utf_len = mblen(mb_p, rw->size - i);
+
+				mbtowc(&wc_tmp, mb_p, rw->size - i);
+				utf_width += wcwidth(wc_tmp);
+				//utf_len += utf_chars;
+		} */
 	}
 	rw->render = NULL;
 	free(rw->render);
@@ -200,6 +217,6 @@ void updateRender (Row *rw)
 		}
 	}
 	rw->render[off] = '\0';
-	rw->r_size = off - cc;
-	rw->utf = cc + ut;
+	rw->r_size = off;
+	//rw->utf = utf_width - utf_chars;
 }
