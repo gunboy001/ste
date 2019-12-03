@@ -15,7 +15,6 @@
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
 #define STAT_SIZE 128
 #define CBUF_SIZE 2048
-#define MAX_LINE 1024
 
 #define MODE_MASK 0x1
 #define COMMAND_MASK 0x06
@@ -332,8 +331,9 @@ void drawLines (void)
 				while (isCont(rows.rw[ln].render[start])) start++;
 				
 				static wchar_t converted_line[MAX_LINE];
-				static int x = 0;
+				static int x;
 				for (x = 0; x < MAX_LINE; x++) converted_line[x] = 0;
+				
 				mbstowcs(converted_line, &rows.rw[ln].render[start], MAX_LINE);
 				addnwstr(converted_line, t.dim.x + 1);
 				
