@@ -178,11 +178,19 @@ int main (int argc, char *argv[])
 				break;
 
 			case (KEY_END):
-				t.cur.y = rows.rownum - 1;
+				t.cur.x = rows.rw[t.cur.y].size;
 				break;
 
 			case (KEY_HOME):
-				t.cur.y = 0;
+				t.cur.x = 0;
+				break;
+
+			case (KEY_NPAGE):
+				t.cur.y += PGK_DELTA;
+				break;
+
+			case (KEY_PPAGE):
+				t.cur.y -= PGK_DELTA;
 				break;
 
 			case (CTRL('f')):
@@ -489,7 +497,8 @@ void curUpdateRender ()
 	*/
 
 	/* Adjust x and y if they are out of bounds */
-	if (t.cur.y < 0 || t.cur.y >= rows.rownum) t.cur.y = 0;
+	if (t.cur.y < 0) t.cur.y = 0;
+	if (t.cur.y >= rows.rownum) t.cur.y = rows.rownum - 1;
 	if (t.cur.x < 0) t.cur.x = 0;
 
 	if (t.cur.y >= t.cur.off_y && t.cur.y < t.cur.off_y + t.dim.y) {
