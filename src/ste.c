@@ -19,7 +19,7 @@
 #define MODE_MASK 0x1
 #define COMMAND_MASK 0x06
 
-#define NORMAL_M 0x0
+#define NORMAL_MODE 0x0
 #define COMMAND_M 0x1
 
 #define FIND_C 0x1
@@ -125,7 +125,7 @@ int main (int argc, char *argv[])
 	snprintf(t.statusbar, STAT_SIZE, "%s %d lines %dx%d", argv[1], rows.rownum, t.dim.y, t.dim.x);
 
 	/* Main event loop */
-	int c;
+	static int c;
 	while (1) {
 		updateInfo();
 		/* Redraw the screen */
@@ -137,18 +137,18 @@ int main (int argc, char *argv[])
 				termExit();
 				break;
 
-			case (KEY_LEFT):
-			case (KEY_RIGHT):
-			case (KEY_UP):
-			case (KEY_DOWN):
-				if ((t.mode_b & MODE_MASK) == NORMAL_M)
+			case (KEY_MOVE_UP):
+			case (KEY_MOVE_DOWN):
+			case (KEY_MOVE_LEFT):
+			case (KEY_MOVE_RIGHT):
+				if ((t.mode_b & MODE_MASK) == NORMAL_MODE)
 					cursorMove(c);
 				else
 					switch (c) {
-						case (KEY_LEFT):
+						case (KEY_MOVE_LEFT):
 							sbMove(&t.search_buffer, -1);
 							break;
-						case (KEY_RIGHT):
+						case (KEY_MOVE_RIGHT):
 							sbMove(&t.search_buffer, 1);
 							break;
 					}
@@ -156,7 +156,7 @@ int main (int argc, char *argv[])
 
 			case (KEY_BACKSPACE):
 			case (KEY_DC):
-				if ((t.mode_b & MODE_MASK) == NORMAL_M)
+				if ((t.mode_b & MODE_MASK) == NORMAL_MODE)
 					handleDel(c);
 				else
 					sbPop(&t.search_buffer);
@@ -165,7 +165,7 @@ int main (int argc, char *argv[])
 			case (KEY_ENTER):
 			case (10):
 			case ('\r'):
-				if ((t.mode_b & MODE_MASK) == NORMAL_M) {
+				if ((t.mode_b & MODE_MASK) == NORMAL_MODE) {
 					rowAddRow(&rows, t.cur.y, t.cur.x);
 					t.cur.y++;
 					t.cur.x = 0;
@@ -177,23 +177,23 @@ int main (int argc, char *argv[])
 				}
 				break;
 
-			case (KEY_END):
+			case (KEY_ROW_END):
 				t.cur.x = rows.rw[t.cur.y].size;
 				break;
 
-			case (KEY_HOME):
+			case (KEY_ROW_BEG):
 				t.cur.x = 0;
 				break;
 
-			case (KEY_NPAGE):
+			case (KEY_JUMP_DOWN):
 				t.cur.y += PGK_DELTA;
 				break;
 
-			case (KEY_PPAGE):
+			case (KEY_JUMP_UP):
 				t.cur.y -= PGK_DELTA;
 				break;
 
-			case (CTRL('f')):
+			case (KEY_FILE_FIND):
 				// Toggle mode
 				t.mode_b ^= MODE_MASK;
 				sbFlush (&t.search_buffer);
@@ -201,7 +201,7 @@ int main (int argc, char *argv[])
 				break;
 
 			default:
-				if ((t.mode_b & MODE_MASK) == NORMAL_M) {
+				if ((t.mode_b & MODE_MASK) == NORMAL_MODE) {
 					t.mode_b |= MODIFIED;
 					if (c == KEY_STAB) c = '\t';
 					rowAddChar(&rows.rw[t.cur.y], c, t.cur.x);
@@ -302,7 +302,7 @@ void drawScreen ()
 	drawLines();
 	/* draw the bar */
 	drawBar(
-		((t.mode_b & MODE_MASK) == NORMAL_M) ? t.statusbar :
+		((t.mode_b & MODE_MASK) == NORMAL_MODE) ? t.statusbar :
 		t.search_buffer.c
 		);
 	/* move back to the cursor position */
@@ -334,17 +334,17 @@ void drawLines (void)
 			/* Draw the line matcing render memory */
 			if (&rows.rw[ln] == NULL) termDie("drawlines NULL");
 			if (rows.rw[ln].r_size > t.cur.off_x) {
-				
+
 				start = t.cur.off_x;
 				while (isCont(rows.rw[ln].render[start])) start++;
-				
+
 				static wchar_t converted_line[MAX_LINE];
 				static int x;
 				for (x = 0; x < MAX_LINE; x++) converted_line[x] = 0;
-				
+
 				mbstowcs(converted_line, &rows.rw[ln].render[start], MAX_LINE);
 				addnwstr(converted_line, t.dim.x + 1);
-				
+
 				//addnstr(&rows.rw[ln].render[start], (t.dim.x + 1) + rows.rw[ln].utf);
 			}
 		}
@@ -414,7 +414,7 @@ void fileOpen (char *filename)
 void cursorMove (int a)
 {
 	switch (a) {
-		case (KEY_LEFT):
+		case (KEY_MOVE_LEFT):
 			if (t.cur.x <= 0) {
 				if (t.cur.y) {
 					t.cur.y--;
@@ -428,7 +428,7 @@ void cursorMove (int a)
 				t.cur.x--;
 			break;
 
-		case (KEY_RIGHT):
+		case (KEY_MOVE_RIGHT):
 				if (t.cur.x >= rows.rw[t.cur.y].size) {
 					if (t.cur.y < rows.rownum - 1) {
 						t.cur.y++;
@@ -442,7 +442,7 @@ void cursorMove (int a)
 					t.cur.x++;
 			break;
 
-		case (KEY_UP):
+		case (KEY_MOVE_UP):
 			if (t.cur.y) {
 				t.cur.y--;
 				if (t.cur.x > rows.rw[t.cur.y].size)
@@ -450,7 +450,7 @@ void cursorMove (int a)
 			}
 			break;
 
-		case (KEY_DOWN):
+		case (KEY_MOVE_DOWN):
 			if (t.cur.y < rows.rownum - 1) {
 				t.cur.y++;
 				if (t.cur.x > rows.rw[t.cur.y].size)
@@ -533,7 +533,7 @@ void curUpdateRender ()
 	} else if (t.cur.r_x < t.cur.off_x) {
 		t.cur.off_x -= t.cur.off_x - t.cur.r_x;
 		t.cur.r_x = 0;
-	
+
 	} else if (t.cur.r_x >= t.cur.off_x + t.dim.x) {
 		t.cur.off_x += t.cur.r_x - (t.cur.off_x + t.dim.x);
 		t.cur.r_x = t.dim.x;
@@ -564,7 +564,7 @@ int whatsThat (void) {
 
 
 void handleDel (int select)
-{	
+{
 	if (select == KEY_BACKSPACE) {
 		if (t.cur.x <= 0 && t.cur.y > 0) {
 			t.cur.x = rows.rw[t.cur.y - 1].size;
@@ -641,7 +641,7 @@ void sbMove (CharBuffer *buf, int x) {
 	buf->cur += (x);
 	if (buf->cur < 0) buf->cur = 0;
 	if (buf->cur >= buf->num) buf->cur = buf->num - 1;
-} 
+}
 
 void sbInsert (CharBuffer *buf, int c)
 {

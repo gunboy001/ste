@@ -1,3 +1,4 @@
 ste
 .sconsign.dblite
 src/*.o
+src/#ste.c#
