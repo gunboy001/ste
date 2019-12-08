@@ -1,9 +1,10 @@
-#ifndef _CONFIG_H_
-#define _CONFIG_H_
+#ifndef _EDITOR_CONFIG_H_
+#define _EDITOR_CONFIG_H_
 
 #define TABSIZE 4 // Tab size as used in render
 #define MAX_LINE 1024 // maximum line length on screen
 #define PGK_DELTA 15 // Step of jump
+//#define RENDER_SHOW_TABS
 
 #define KEY_JUMP_UP       KEY_PPAGE
 #define KEY_JUMP_DOWN     KEY_NPAGE

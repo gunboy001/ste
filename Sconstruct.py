@@ -5,4 +5,4 @@ env.Append(CCFLAGS=['-O3', '-Wall', '-Wextra', '-pedantic', '-Werror', '-Warray-
 env.Append(LIBPATH = ['lib/'])
 env.Append(LIBS = ['ncursesw'])
 
-env.Program(target='ste', source=['src/ste.c', 'src/fbuffer.c'])
+env.Program(target='ste', source=['src/ste.c'])

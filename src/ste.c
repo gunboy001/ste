@@ -62,11 +62,6 @@ struct term {
 
 FileBuffer rows;
 
-const char *msg[] = {
-					"Find: ",
-					"Nigger"
-					};
-
 /* Prototypes */
 /* draw operations */
 static void drawBar (char *s);
@@ -125,8 +120,8 @@ int main (int argc, char *argv[])
 	snprintf(t.statusbar, STAT_SIZE, "%s %d lines %dx%d", argv[1], rows.rownum, t.dim.y, t.dim.x);
 
 	/* Main event loop */
-	static int c;
 	while (1) {
+		static int c;
 		updateInfo();
 		/* Redraw the screen */
 		drawScreen();
