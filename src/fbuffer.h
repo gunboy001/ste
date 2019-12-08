@@ -1,8 +1,18 @@
 #ifndef _FBUFFER_H_
 #define _FBUFFER_H_
+
 #ifndef _XOPEN_SOURCE 
 	#define _XOPEN_SOURCE       /* See feature_test_macros(7) */
 #endif
+
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <wchar.h>
+
+#include "config.h"
+#include "die.h"
+
 /* Row structure, defines actual and
  * render chars, actual and render size
  * and difference between render and
@@ -43,11 +53,7 @@ int isUtf (int c);
 int isCont (int c);
 int isStart (int c);
 
-#include "config.h"
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-#include <wchar.h>
+/* Start of function definitions */
 
 void bufInit (FileBuffer *b)
 {
@@ -60,13 +66,13 @@ void rowAddLast (FileBuffer *b, char *s, int len)
 {
 	/* Extend the block of memory containing the lines */
 	Row *newr = realloc(b->rw, (b->rownum + 1) * sizeof(Row));
-	//if (newr == NULL) termDie("realloc in rowAddLast");
+	if (newr == NULL) die("realloc in rowAddLast", REALLOC_ERR);
 	b->rw = newr;
 
 	/* Allocate memory for the line and copy it
 	 * at the current row number */
 	b->rw[b->rownum].chars = malloc(len  + 1);
-	//if (b->rw[b->rownum].chars == NULL) termDie("malloc in rowAddLast chars");
+	if (b->rw[b->rownum].chars == NULL) die("malloc in rowAddLast chars", MALLOC_ERR);
 	memcpy(b->rw[b->rownum].chars, s, len);
 	b->rw[b->rownum].chars[len] = '\0';
 	b->rw[b->rownum].size = len;
@@ -81,9 +87,9 @@ void rowAddChar (Row *rw, char c, int pos)
 	
 	/* extend the string */
 	rw->size++;
-	char *t = realloc(rw->chars, rw->size + 1);
-	//if (t == NULL) termDie("realloc in rowAddchar");
-	rw->chars = t;
+	char *tmp = realloc(rw->chars, rw->size + 1);
+	if (tmp == NULL) die("realloc in rowAddchar", REALLOC_ERR);
+	rw->chars = tmp;
 
 	/* make space for the new char */
 	memcpy(&rw->chars[pos + 1], &rw->chars[pos], (rw->size + 1) - (pos + 1));
@@ -131,7 +137,7 @@ void rowAddRow (FileBuffer *b, int pos, int cur) // WIP; TO DOCUMENT
 	Row nex = EROW;
 	/* allocate a buffer */
 	char *s = malloc(len + 1);
-	//if (s == NULL) termDie("malloc in rowAddRow s");
+	if (s == NULL) die("malloc in rowAddRow s", MALLOC_ERR);
 	/* copy the contents of the pos row after the cursor into the buffer */
 	memcpy(s, &b->rw[pos].chars[cur], len);
 	s[len] = '\0';
@@ -142,7 +148,7 @@ void rowAddRow (FileBuffer *b, int pos, int cur) // WIP; TO DOCUMENT
 	/* MAKE THE SPLIT INTO TWO LINES */
 	/* shrink the line at pos */
 	char *p = realloc(b->rw[pos].chars, cur + 1);
-	//if (p == NULL) termDie("realloc in rowAddRow");
+	if (p == NULL) die("realloc in rowAddRow", REALLOC_ERR);
 	b->rw[pos].chars = p;
 	/* and terminate it with null like a good boi */
 	b->rw[pos].chars[cur] = '\0';
@@ -173,7 +179,7 @@ void rowCpy (Row *to, Row *from) // WIP
 	rowFree(to);
 	/* Allocate space for the new string */
 	to->chars = (char*) malloc(strlen(from->chars) + 1);
-	//if (to->chars == NULL) termDie("malloc in rowCpy");
+	if (to->chars == NULL) die("malloc in rowCpy", MALLOC_ERR);
 	/* And update the size */
 	to->size = from->size;
 	/* Then copy the chars from the source row to the destination row */
@@ -187,7 +193,7 @@ void rowAppendString (Row *rw, char *s, int len)
 {
 	/* reallocate the row to accomodate for the added string */
 	char *temp = realloc(rw->chars, rw->size + len + 1);
-	//if (temp == NULL) termDie("realloc in rowAppendString");
+	if (temp == NULL) die("realloc in rowAppendString", REALLOC_ERR);
 	rw->chars = temp;
 
 	memcpy(&rw->chars[rw->size], s, len);
@@ -209,7 +215,7 @@ void rowDeleteRow (FileBuffer *b, int pos)
 	b->rownum--;
 	rowFree(&b->rw[b->rownum]);
 	Row *temp = realloc(b->rw, sizeof(Row) * b->rownum);
-	//if (temp == NULL) termDie("realloc in rowDeleteRow");
+	if (temp == NULL) die("realloc in rowDeleteRow", REALLOC_ERR);
 	b->rw = temp;
 }
 
@@ -245,7 +251,7 @@ void updateRender (Row *rw)
 	/* Render is long as size with the added tab spaces - 1
 	 * (we already count for the \t as a char) */
 	rw->render = malloc(rw->size + tabs * (TABSIZE - 1) + 1);
-	//if (rw->render == NULL) termDie ("malloc in updateRender");
+	if (rw->render == NULL) die ("malloc in updateRender", MALLOC_ERR);
 
 	/* put all the characters (substituing all special chars)
 	 * into the render buffer */

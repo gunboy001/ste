@@ -10,6 +10,7 @@
 
 #include "fbuffer.h"
 #include "config.h"
+#include "die.h"
 
 /* defines */
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
@@ -74,8 +75,6 @@ static inline void lnMove (int y, int x);
 
 /* Terminal operations */
 static void termInit (void);
-static void termExit (void);
-static void termDie (char *s);
 
 /* file operations */
 static void fileOpen (char *filename);
@@ -129,7 +128,7 @@ int main (int argc, char *argv[])
 		/* Wait for an event (keypress) */
 		switch (c = getch()) {
 			case (CTRL('q')):
-				termExit();
+				die("", AOK);
 				break;
 
 			case (KEY_MOVE_UP):
@@ -210,7 +209,7 @@ int main (int argc, char *argv[])
 
 	/* If by chance i find myself here be sure
 	 * end curses mode and clenaup */
-	termExit();
+	die("", AOK);
 	return 0;
 }
 
@@ -268,23 +267,6 @@ int decimalSize (int n)
 	return l + 1;
 }
 
-void termExit (void)
-{
-	erase();
-	refresh();
-	endwin();
-	exit(0);
-}
-
-void termDie (char *s)
-{
-	erase();
-	refresh();
-	endwin();
-	perror(s);
-	exit(1);
-}
-
 /* ----------------------------- term operations -------------------------------- */
 
 void drawScreen ()
@@ -327,7 +309,7 @@ void drawLines (void)
 			lnMove(i, 0);
 
 			/* Draw the line matcing render memory */
-			if (&rows.rw[ln] == NULL) termDie("drawlines NULL");
+			if (&rows.rw[ln] == NULL) die("drawlines NULL", BAD_PNTR);
 			if (rows.rw[ln].r_size > t.cur.off_x) {
 
 				start = t.cur.off_x;
@@ -382,7 +364,7 @@ void drawBar (char *s)
 void fileOpen (char *filename)
 {
 	FILE *fp = fopen(filename, "r");
-	if (fp == NULL) termDie("Cannot open file");
+	if (fp == NULL) die("Cannot open file", BAD_FILE);
 
 	/* Init the linebuffer */
 	char *line = NULL;
