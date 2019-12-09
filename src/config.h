@@ -18,4 +18,9 @@
 #define KEY_MOVE_DOWN     KEY_DOWN
 #define KEY_FILE_FIND     CTRL('f')
 
+/* Modify ONLY if you know what you are doing */
+#define FILENAME_MAX_LENGTH 128
+#define STAT_SIZE 256
+/*--------------------------------------------*/
+
 #endif

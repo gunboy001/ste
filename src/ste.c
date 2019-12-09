@@ -14,7 +14,6 @@
 
 /* defines */
 #define CTRL(k) ((k) & 0x1f) // Control mask modifier
-#define STAT_SIZE 128
 #define CBUF_SIZE 2048
 
 #define MODE_MASK 0x1
@@ -59,6 +58,7 @@ struct term {
 	int pad;
 	char mode_b;
 	CharBuffer search_buffer;
+	char filename[FILENAME_MAX_LENGTH];
 } t;
 
 FileBuffer rows;
@@ -106,17 +106,13 @@ int main (int argc, char *argv[])
 	bufInit(&rows);
 
 	/* Try to open the file */
-	if (argc < 2) {
-		perror("File not found");
-		exit(1);
-	} else fileOpen(argv[1]);
+	if (argc < 2) die("File not found", BAD_FILE);
+	fileOpen(argv[1]);
+	snprintf(t.filename, FILENAME_MAX_LENGTH, "%s", argv[1]);
 
 	/* Initialize the terminal in raw mode,
 	 * start curses and initialize the term struct */
 	termInit();
-
-	/* Set the statusbar left (static) message */
-	snprintf(t.statusbar, STAT_SIZE, "%s %d lines %dx%d", argv[1], rows.rownum, t.dim.y, t.dim.x);
 
 	/* Main event loop */
 	while (1) {
@@ -574,6 +570,9 @@ void handleDel (int select)
 
 void updateInfo (void)
 {
+	/* Set the statusbar left message */
+	snprintf(t.statusbar, STAT_SIZE, "%s %d lines %dx%d", t.filename, rows.rownum, t.dim.y, t.dim.x);
+
 	getmaxyx(stdscr, t.dim.y, t.dim.x);
 	t.dim.y -= 1;
 	t.pad = decimalSize(rows.rownum - 1);
