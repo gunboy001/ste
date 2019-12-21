@@ -493,7 +493,13 @@ void curUpdateRender ()
 
 		/* continue (skip increment) if you encounter a continuation char */
 		if (isCont(c)) continue;
-		else if (isStart(c)) t.cur.r_x++;
+		else if (isStart(c)) {
+			wchar_t tc;
+			mbtowc(&tc,
+					&rows.rw[t.cur.y].chars[i], 
+					rows.rw[t.cur.y].size - i);
+			t.cur.r_x += wcwidth(tc) - 1;
+		}
 
 		if (c == '\t') t.cur.r_x += (TABSIZE - 1);
 
