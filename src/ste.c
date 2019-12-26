@@ -359,26 +359,35 @@ void drawBar (char *s)
 /* Open a file and put it into a buffer line by line */
 void fileOpen (char *filename)
 {
-	FILE *fp = fopen(filename, "r");
-	if (fp == NULL) die("Cannot open file", BAD_FILE);
+	FILE *fd = fopen(filename, "a+");
+	if (fd == NULL) die("Cannot open file", BAD_FILE);
 
-	/* Init the linebuffer */
-	char *line = NULL;
-	/* Set linecap to 0 so getline will atumatically allocate
-	 * memory for the line buffer*/
-	size_t linecap = 0;
-	ssize_t linelen;
+	/* Check if the file is empty first */
+	fseek (fd, 0, SEEK_END);
+	int size = ftell(fd);
+	if (size) {
+		rewind(fd);
 
-	/* getline returns -1 if no new line is present */
-	while ((linelen = getline(&line, &linecap, fp)) != -1) {
-		while (linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
-			linelen--;
-		rowAddLast(&rows, line, linelen);
+		/* Init the linebuffer */
+		char *line = NULL;
+		/* Set linecap to 0 so getline will atumatically allocate
+		 * memory for the line buffer*/
+		size_t linecap = 0;
+		ssize_t linelen;
+
+		/* getline returns -1 if no new line is present */
+		while ((linelen = getline(&line, &linecap, fd)) != -1) {
+			while (linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
+				linelen--;
+			rowAddLast(&rows, line, linelen);
+		}
+		/* free the line buffer */
+		free(line);
+	} else {
+		rowAddLast(&rows, " ", 1);
 	}
-	/* free the line buffer */
-	free(line);
 	/* close the file */
-	fclose(fp);
+	fclose(fd);
 }
 
 /*------------------------------------- file operations ----------------------------------*/
@@ -581,7 +590,7 @@ void updateInfo (void)
 
 	getmaxyx(stdscr, t.dim.y, t.dim.x);
 	t.dim.y -= 1;
-	t.pad = decimalSize(rows.rownum - 1);
+	t.pad = decimalSize(rows.rownum > 1 ? rows.rownum - 1 : 2);
 	t.dim.x -= t.pad + 1;
 }
 

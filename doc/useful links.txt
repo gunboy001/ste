@@ -16,3 +16,8 @@ Write a simple text editor written in pure C:
 
 All C keywords:
 	https://www.programiz.com/c-programming/list-all-keywords-c-language
+
+Nuklear:
+	https://github.com/Immediate-Mode-UI/Nuklear
+	https://github.com/vurtun/nuklear/wiki/Text-Edit
+	https://dexp.in/articles/nuklear-intro/
