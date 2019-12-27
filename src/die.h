@@ -12,6 +12,7 @@ typedef enum {
 	AOK,
 	GENERIC_ERR,
 	BAD_FILE,
+	SAVE_ERR,
 	MALLOC_ERR,
 	REALLOC_ERR,
 	BAD_PNTR
@@ -25,7 +26,8 @@ void die (const char *message, DeathStatus sn)
 		endwin();
 	#endif
 
-	if (sn)	perror(message);
+	if (sn && message != NULL)
+		perror(message);
 	exit(sn);
 }
 

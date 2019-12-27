@@ -25,6 +25,8 @@
 #define FIND_C 0x1
 
 #define MODIFIED 0x80
+#define NEW_FILE 0x40
+#define NAME_TRUNCATED 0x20
 
 // Search buffer
 typedef struct CharBuffer {
@@ -56,9 +58,9 @@ struct term {
 
 	char statusbar[STAT_SIZE];
 	int pad;
-	char mode_b;
+	char state;
 	CharBuffer search_buffer;
-	char filename[FILENAME_MAX_LENGTH];
+	char filename[FILENAME_MAX_LENGTH];	
 } t;
 
 FileBuffer rows;
@@ -78,7 +80,7 @@ static void termInit (void);
 
 /* file operations */
 static void fileOpen (char *filename);
-void fileSave (char *filename);
+static void fileSave (char *filename);
 
 /* buffer operations */
 static int editorFind (const char* needle, int* y, int* x);
@@ -108,7 +110,8 @@ int main (int argc, char *argv[])
 	/* Try to open the file */
 	if (argc < 2) die("File not found", BAD_FILE);
 	fileOpen(argv[1]);
-	snprintf(t.filename, FILENAME_MAX_LENGTH, "%s", argv[1]);
+	if(snprintf(t.filename, FILENAME_MAX_LENGTH, "%s", argv[1]) >= FILENAME_MAX_LENGTH)
+		t.state |= NAME_TRUNCATED;
 
 	/* Initialize the terminal in raw mode,
 	 * start curses and initialize the term struct */
@@ -124,14 +127,33 @@ int main (int argc, char *argv[])
 		/* Wait for an event (keypress) */
 		switch (c = getch()) {
 			case (CTRL('q')):
-				die("", AOK);
+				if (!(t.state & MODIFIED)) {
+					if (t.state & NEW_FILE) {
+						if (t.state & NAME_TRUNCATED) {
+							if (remove(argv[1]) == -1) 
+								die("Could not delete file (argv)", BAD_FILE);
+						} else {
+							if (remove(t.filename) == -1)
+								die("Could not delete file (stored filename)", BAD_FILE);
+						}
+							die("File not modified", AOK);
+					} else {
+						die(NULL, AOK);
+					}
+				} else {
+					if (t.state & NAME_TRUNCATED)
+						fileSave(argv[1]);
+					else
+						fileSave(t.filename);
+					die(NULL, AOK);
+				}
 				break;
 
 			case (KEY_MOVE_UP):
 			case (KEY_MOVE_DOWN):
 			case (KEY_MOVE_LEFT):
 			case (KEY_MOVE_RIGHT):
-				if ((t.mode_b & MODE_MASK) == NORMAL_MODE)
+				if ((t.state & MODE_MASK) == NORMAL_MODE)
 					cursorMove(c);
 				else
 					switch (c) {
@@ -146,7 +168,7 @@ int main (int argc, char *argv[])
 
 			case (KEY_BACKSPACE):
 			case (KEY_DC):
-				if ((t.mode_b & MODE_MASK) == NORMAL_MODE)
+				if ((t.state & MODE_MASK) == NORMAL_MODE)
 					handleDel(c);
 				else
 					sbPop(&t.search_buffer);
@@ -155,14 +177,15 @@ int main (int argc, char *argv[])
 			case (KEY_ENTER):
 			case (10):
 			case ('\r'):
-				if ((t.mode_b & MODE_MASK) == NORMAL_MODE) {
+				if ((t.state & MODE_MASK) == NORMAL_MODE) {
 					rowAddRow(&rows, t.cur.y, t.cur.x);
+					t.state |= MODIFIED;
 					t.cur.y++;
 					t.cur.x = 0;
 				} else {
 					editorFind(t.search_buffer.c, &t.cur.y, &t.cur.x);
 					// Toggle mode
-					t.mode_b ^= MODE_MASK;
+					t.state ^= MODE_MASK;
 					sbFlush (&t.search_buffer);
 				}
 				break;
@@ -185,16 +208,16 @@ int main (int argc, char *argv[])
 
 			case (KEY_FILE_FIND):
 				// Toggle mode
-				t.mode_b ^= MODE_MASK;
+				t.state ^= MODE_MASK;
 				sbFlush (&t.search_buffer);
 
 				break;
 
 			default:
-				if ((t.mode_b & MODE_MASK) == NORMAL_MODE) {
-					t.mode_b |= MODIFIED;
+				if ((t.state & MODE_MASK) == NORMAL_MODE) {
 					if (c == KEY_STAB) c = '\t';
 					rowAddChar(&rows.rw[t.cur.y], c, t.cur.x);
+					t.state |= MODIFIED;
 					t.cur.x++;
 				} else {
 					sbInsert(&t.search_buffer, c);
@@ -205,7 +228,7 @@ int main (int argc, char *argv[])
 
 	/* If by chance i find myself here be sure
 	 * end curses mode and clenaup */
-	die("", AOK);
+	die(NULL, AOK);
 	return 0;
 }
 
@@ -275,7 +298,7 @@ void drawScreen ()
 	drawLines();
 	/* draw the bar */
 	drawBar(
-		((t.mode_b & MODE_MASK) == NORMAL_MODE) ? t.statusbar :
+		((t.state & MODE_MASK) == NORMAL_MODE) ? t.statusbar :
 		t.search_buffer.c
 		);
 	/* move back to the cursor position */
@@ -359,8 +382,13 @@ void drawBar (char *s)
 /* Open a file and put it into a buffer line by line */
 void fileOpen (char *filename)
 {
-	FILE *fd = fopen(filename, "a+");
-	if (fd == NULL) die("Cannot open file", BAD_FILE);
+	FILE *fd = fd = fopen(filename, "r");
+	if (fd == NULL) {
+		t.state |= NEW_FILE;
+		fd = fopen(filename, "a+");
+		if (fd == NULL)
+			die("Could not open file: permission denied", BAD_FILE);
+	}
 
 	/* Check if the file is empty first */
 	fseek (fd, 0, SEEK_END);
@@ -387,6 +415,16 @@ void fileOpen (char *filename)
 		rowAddLast(&rows, " ", 1);
 	}
 	/* close the file */
+	fclose(fd);
+}
+
+void fileSave (char *filename)
+{
+	FILE *fd = fopen(filename, "w");
+	if (fd == NULL)
+		die("Cannot open file (save)", SAVE_ERR);
+	for(int i = 0; i < rows.rownum; i++)
+		fprintf(fd, "%s\n", rows.rw[i].chars);
 	fclose(fd);
 }
 
