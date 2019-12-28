@@ -108,7 +108,7 @@ int main (int argc, char *argv[])
 	bufInit(&rows);
 
 	/* Try to open the file */
-	if (argc < 2) die("File not found", BAD_FILE);
+	if (argc < 2) die("File not found", ENOENT);
 	fileOpen(argv[1]);
 	if(snprintf(t.filename, FILENAME_MAX_LENGTH, "%s", argv[1]) >= FILENAME_MAX_LENGTH)
 		t.state |= NAME_TRUNCATED;
@@ -131,21 +131,20 @@ int main (int argc, char *argv[])
 					if (t.state & NEW_FILE) {
 						if (t.state & NAME_TRUNCATED) {
 							if (remove(argv[1]) == -1) 
-								die("Could not delete file (argv)", BAD_FILE);
+								die("Could not delete file (argv)", EEXIST);
 						} else {
 							if (remove(t.filename) == -1)
-								die("Could not delete file (stored filename)", BAD_FILE);
+								die("Could not delete file (stored filename)", EEXIST);
 						}
-							die("File not modified", AOK);
 					} else {
-						die(NULL, AOK);
+						die(NULL, 0);
 					}
 				} else {
 					if (t.state & NAME_TRUNCATED)
 						fileSave(argv[1]);
 					else
 						fileSave(t.filename);
-					die(NULL, AOK);
+					die(NULL, 0);
 				}
 				break;
 
@@ -228,7 +227,7 @@ int main (int argc, char *argv[])
 
 	/* If by chance i find myself here be sure
 	 * end curses mode and clenaup */
-	die(NULL, AOK);
+	die(NULL, 0);
 	return 0;
 }
 
@@ -328,7 +327,7 @@ void drawLines (void)
 			lnMove(i, 0);
 
 			/* Draw the line matcing render memory */
-			if (&rows.rw[ln] == NULL) die("drawlines NULL", BAD_PNTR);
+			if (&rows.rw[ln] == NULL) die("drawlines NULL", EFAULT);
 			if (rows.rw[ln].r_size > t.cur.off_x) {
 
 				start = t.cur.off_x;
@@ -387,7 +386,7 @@ void fileOpen (char *filename)
 		t.state |= NEW_FILE;
 		fd = fopen(filename, "a+");
 		if (fd == NULL)
-			die("Could not open file: permission denied", BAD_FILE);
+			die("Could not open file", 0);
 	}
 
 	/* Check if the file is empty first */
@@ -422,7 +421,7 @@ void fileSave (char *filename)
 {
 	FILE *fd = fopen(filename, "w");
 	if (fd == NULL)
-		die("Cannot open file (save)", SAVE_ERR);
+		die("Could not save file", 0);
 	for(int i = 0; i < rows.rownum; i++)
 		fprintf(fd, "%s\n", rows.rw[i].chars);
 	fclose(fd);

@@ -1,24 +1,17 @@
 #ifndef _HELPER_DIE_H_
 #define _HELPER_DIE_H_
 
+#include "config.h"
+
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 
 #ifdef FRONTEND_NCURSES
 	#include <ncurses.h>
 #endif
 
-typedef enum {
-	AOK,
-	GENERIC_ERR,
-	BAD_FILE,
-	SAVE_ERR,
-	MALLOC_ERR,
-	REALLOC_ERR,
-	BAD_PNTR
-} DeathStatus;
-
-void die (const char *message, DeathStatus sn)
+void die (const char *message, int err)
 {
 	#ifdef FRONTEND_NCURSES
 		erase();
@@ -26,9 +19,20 @@ void die (const char *message, DeathStatus sn)
 		endwin();
 	#endif
 
-	if (sn && message != NULL)
+	if (message == NULL)
+		exit(0);
+
+	if (err > 131)
+		err = 1;
+
+	if (err) {
+		printf("\n%s:%s", message, strerror(err));
+		exit(err);
+	} else {
 		perror(message);
-	exit(sn);
+		exit(errno);
+	}
+	exit(-1);
 }
 
 #endif
