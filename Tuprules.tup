@@ -1,0 +1,6 @@
+CFLAGS += -Wall
+CFLAGS += -O3
+CFLAGS += -pedantic
+CFLAGS += -Werror
+
+!cc = |> zig cc $(CFLAGS) -f %f -o %o |> %B.o
